@@ -1,0 +1,4 @@
+name = "IterativeLQR"
+uuid = "605048dd-e178-462b-beb9-98a09398ef27"
+authors = ["thowell <thowell@stanford.edu>"]
+version = "0.1.0"

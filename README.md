@@ -1,2 +1,2 @@
-# ConstrainedDDP.jl
-A Julia package for constrained differential dynamic programming
+# IterativeLQR.jl
+A Julia package for constrained iterative LQR
