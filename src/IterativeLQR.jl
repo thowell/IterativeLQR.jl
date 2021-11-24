@@ -27,4 +27,13 @@ export Constraint
 # dynamics 
 export Dynamics
 
+# solver 
+export rollout, 
+    step!,
+    problem_data, 
+    initialize_controls!, 
+    initialize_state!, 
+    ilqr_solve!, constrained_ilqr_solve!,
+    nominal_trajectory
+
 end # module

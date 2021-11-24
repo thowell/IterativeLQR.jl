@@ -96,7 +96,7 @@ function constraints!(c_data::ConstraintsData, x, u, w)
 end
 
 function constraint_violation(c_data::ConstraintsData; norm_type=Inf)
-    T = length(cons)
+    T = length(c_data.cons)
     c_max = 0.0
     for t = 1:T
         c_viol = copy(c_data.c[t]) # TODO: may be unnecessary

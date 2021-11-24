@@ -29,6 +29,7 @@ function forward_pass!(p_data::PolicyData, m_data::ModelData, s_data::SolverData
         iter > max_iter && (@error "forward pass failure", break)
 
         J = Inf
+        #TODO: remove try-catch
         try
             rollout!(p_data, m_data, α=s_data.α[1])
             J = objective!(s_data, m_data, mode=:current)[1]
