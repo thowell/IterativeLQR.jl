@@ -1,4 +1,4 @@
-function ddp_solve!(prob::ProblemData;
+function ilqr_solve!(prob::ProblemData;
     max_iter = 10,
     obj_tol = 1.0e-5,
     grad_tol = 1.0e-5,
@@ -21,13 +21,12 @@ function ddp_solve!(prob::ProblemData;
     backward_pass!(p_data, m_data, mode = :nominal)
 
     stats = Dict(:iters => 0)
-    obj_prev = s_data.obj
+    obj_prev = s_data.obj[1]
 
     for i = 1:max_iter
         forward_pass!(p_data, m_data, s_data,
             α_min = α_min,
             linesearch = linesearch)
-
         if linesearch != :none
             derivatives!(m_data, mode = :nominal)
             backward_pass!(p_data, m_data, mode = :nominal)
@@ -41,13 +40,13 @@ function ddp_solve!(prob::ProblemData;
         stats[:iters] = i
         grad_norm = norm(s_data.gradient, Inf)
         verbose && println("     iter: $i
-             cost: $(s_data.obj)
+             cost: $(s_data.obj[1])
 			 grad_norm: $(grad_norm)
 			 c_max: $(s_data.c_max)
-			 α: $(s_data.α)")
+			 α: $(s_data.α[1])")
 		grad_norm < grad_tol && break
-        abs(s_data.obj - obj_prev) < obj_tol ? break : (obj_prev = s_data.obj)
-        !s_data.status && break
+        abs(s_data.obj[1] - obj_prev) < obj_tol ? break : (obj_prev = s_data.obj[1])
+        !s_data.status[1] && break
     end
 
     return stats
@@ -57,21 +56,17 @@ end
     gradient of Lagrangian
         https://web.stanford.edu/class/ee363/lectures/lqr-lagrange.pdf
 """
-function lagrangian_gradient!(s_data::SolverData, p_data::PolicyData, n, m, T)
-    p = p_data.p
+function lagrangian_gradient!(s_data::SolverData, p_data::PolicyData, m_data::ModelData)
+	p = p_data.p
     Qx = p_data.Qx
     Qu = p_data.Qu
+    T = length(m_data.x)
 
     for t = 1:T-1
         s_data.gradient[s_data.idx_x[t]] = Qx[t] - p[t] # should always be zero by construction
         s_data.gradient[s_data.idx_u[t]] = Qu[t]
     end
     # NOTE: gradient wrt xT is satisfied implicitly
-end
-
-function lagrangian_gradient!(s_data::SolverData, p_data::PolicyData, m_data::ModelData)
-	lagrangian_gradient!(s_data, p_data,
-		m_data.n, m_data.m, m_data.T)
 end
 
 """

@@ -26,27 +26,35 @@ function midpoint_explicit(x, u, w)
 end
 
 # ## model
-dt = Dynamics(midpoint_explicit, nx, nu, nw=nw)
-dyn = [dt for t = 1:T-1] 
-model = DynamicsModel(dyn)
-data_model = dynamics_derivatives_data(model)
+dyn = Dynamics(midpoint_explicit, nx, nu, nw)
+model = [dyn for t = 1:T-1] 
+data_model = model_derivatives_data(model)
 
 # ## initialization
 x1 = [0.0; 0.0; 0.0] 
 xT = [1.0; 1.0; 0.0] 
 
+# ## rollout
+ū = [1.0e-1 * [1.0; 0.1] for t = 1:T-1]
+w = [zeros(nw) for t = 1:T-1] 
+x̄ = rollout(model, x1, ū, w)
+
 # ## objective 
-ot = (x, u, w) -> 0.0 * dot(x - xT, x - xT) + 1.0 * dot(u, u)
-oT = (x, u, w) -> 0.0 * dot(x - xT, x - xT)
-ct = Cost(ot, nx, nu, nw, [t for t = 1:T-1])
-cT = Cost(oT, nx, 0, nw, [T])
-obj = [ct, cT]
-objective_derivatives_data(model)
+ot = (x, u, w) -> 1.0 * dot(x - xT, x - xT) + 1.0e-1 * dot(u, u)
+oT = (x, u, w) -> 1000.0 * dot(x - xT, x - xT)
+ct = Cost(ot, nx, nu, nw)
+cT = Cost(oT, nx, 0, nw)
+obj = [[ct for t = 1:T-1]..., cT]
 
-model_data(model, obj)
-policy_data(model)
-solver_data(model)
+prob = problem_data(model, obj)
+initialize_control!(prob, ū) 
+initialize_state!(prob, x̄)
 
+ilqr_solve!(prob, max_iter=100)
+
+x_sol, u_sol = nominal_trajectory(prob)
+
+plot(hcat(x_sol...)')
 
 # ## constraints
 ul = -0.5 * ones(nu) 

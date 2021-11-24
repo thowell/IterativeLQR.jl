@@ -65,20 +65,25 @@ end
 function model_data(model::Model, obj::Objective; 
     w=[zeros(d.nw) for d in model])
 
+    @assert length(w) == length(model)
+    @assert length(model) + 1 == length(obj)
+
 	x = [[zeros(d.nx) for d in model]..., 
             zeros(model[end].ny)]
-    u = [zeros(d.nu) for d in model]
+    u = [[zeros(d.nu) for d in model]..., zeros(0)]
 
     x̄ = [[zeros(d.nx) for d in model]..., 
             zeros(model[end].ny)]
-    ū = [zeros(d.nu) for d in model]
+    ū = [[zeros(d.nu) for d in model]..., zeros(0)]
+
+    length(w) == length(model) && (w = [w..., zeros(0)])
 
     model_deriv = model_derivatives_data(model)
     obj_deriv = objective_derivatives_data(model)
 
     z = zeros(num_var(model))
 
-    ModelData(x, u, w, x̄, ū, model, obj, dyn_deriv, obj_deriv, z)
+    ModelData(x, u, w, x̄, ū, model, obj, model_deriv, obj_deriv, z)
 end
 
 function objective(data::ModelData; mode = :nominal)
@@ -184,28 +189,27 @@ function solver_data(model::Model{T}; max_cache=1000) where T
 	cache = Dict(:obj => zeros(max_cache), 
                  :gradient => zeros(max_cache), 
                  :c_max => zeros(max_cache), 
-                 :α => zeros(max_cache),
-                 :iter => 1)
+                 :α => zeros(max_cache))
 
     SolverData(obj, gradient, c_max, idx_x, idx_u, α, [false], cache)
 end
 
+# TODO: fix iter
 function cache!(data::SolverData)
-    iter = data.cache[:iter] 
-    (iter > length(data[:obj])) && (@warn "solver data cache exceeded")
+    iter = 1 #data.cache[:iter] 
+    # (iter > length(data[:obj])) && (@warn "solver data cache exceeded")
 	data.cache[:obj][iter] = data.obj
 	data.cache[:gradient][iter] = data.gradient
 	data.cache[:c_max][iter] = data.c_max
 	data.cache[:α][iter] = data.α
-    data.cache[:iter] = iter + 1
     return nothing
 end
 
 function objective!(s_data::SolverData, m_data::ModelData; mode = :nominal)
 	if mode == :nominal
-		s_data.obj = eval_obj(m_data.obj, m_data.x̄, m_data.ū, m_data.w)
+		s_data.obj[1] = eval_obj(m_data.obj, m_data.x̄, m_data.ū, m_data.w)
 	elseif mode == :current
-		s_data.obj = eval_obj(m_data.obj, m_data.x, m_data.u, m_data.w)
+		s_data.obj[1] = eval_obj(m_data.obj, m_data.x, m_data.u, m_data.w)
 	end
 
 	if m_data.obj isa AugmentedLagrangianCosts
@@ -224,7 +228,7 @@ function Δz!(m_data::ModelData, p_data::PolicyData, s_data::SolverData)
     fill!(m_data.z, 0.0)
     for t = 1:T-1
         m_data.z[s_data.idx_u[t]] .= p_data.K[t] * m_data.z[s_data.idx_x[t]] + p_data.k[t]
-        m_data.z[s_data.idx_x[t+1]] .= m_data.dyn_deriv.fx[t] * m_data.z[s_data.idx_x[t]] + m_data.dyn_deriv.fu[t] * m_data.z[s_data.idx_u[t]]
+        m_data.z[s_data.idx_x[t+1]] .= m_data.model_deriv.fx[t] * m_data.z[s_data.idx_x[t]] + m_data.model_deriv.fu[t] * m_data.z[s_data.idx_u[t]]
     end
 end
 
@@ -281,4 +285,18 @@ function problem_data(model::Model, obj::Objective, cons::Constraints,
     s_data = solver_data(model)
 
 	ProblemData(p_data, m_data, s_data)
+end
+
+function initialize_control!(prob::ProblemData, u) 
+    for (t, ut) in enumerate(u) 
+        # prob.m_data.u[t] .= copy(ut) 
+        prob.m_data.ū[t] .= copy(ut) 
+    end 
+end
+
+function initialize_state!(prob::ProblemData, x) 
+    for (t, xt) in enumerate(x) 
+        # prob.m_data.x[t] .= copy(xt) 
+        prob.m_data.x̄[t] .= copy(xt) 
+    end 
 end

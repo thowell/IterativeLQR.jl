@@ -1,83 +1,25 @@
-function dynamics_derivatives!(data::ModelData; mode = :nominal)
-    if mode == :nominal
-        x̄ = data.x̄
-        ū = data.ū
-    else
-        x̄ = data.x
-        ū = data.u
-    end
-
+function model_derivatives!(data::ModelData; mode=:nominal)
+    model = data.model 
+    x = mode == :nominal ? data.x̄ : data.x 
+    u = mode == :nominal ? data.ū : data.u 
     w = data.w
-    h = data.h
-    T = length(data.x)
-    model = data.model
-
-    for t = 1:T-1
-       	if data.analytical_derivatives
-			data.dyn_deriv.fx[t] .= fdx(model, x̄[t], ū[t], w[t], t)
-	      	data.dyn_deriv.fu[t] .= fdu(model, x̄[t], ū[t], w[t], t)
-		else
-			fx(z) = fd(model, z, ū[t], w[t], h, t)
-	        fu(z) = fd(model, x̄[t], z, w[t], h, t)
-	        # fw(z) = fd(model, x̄[t], ū[t], z, h, t)
-
-	        # data.dyn_deriv.fx[t] .= ForwardDiff.jacobian(fx, x̄[t])
-	        # data.dyn_deriv.fu[t] .= ForwardDiff.jacobian(fu, ū[t])
-	        # # data.dyn_deriv.fw[t] = ForwardDiff.jacobian(fw, w[t])
-
-			ForwardDiff.jacobian!(data.dyn_deriv.fx[t], fx, x̄[t])
-	        ForwardDiff.jacobian!(data.dyn_deriv.fu[t], fu, ū[t])
-	        # ForwardDiff.jacobian!(data.dyn_deriv.fw[t], fw, w[t])
-		end
-    end
+    jx = data.model_deriv.fx
+    ju = data.model_deriv.fu
+    eval_con_jac!(jx, ju, model, x, u, w)
 end
 
-function objective_derivatives!(obj, data::ModelData;
-    mode = :nominal)
-
-    if mode == :nominal
-        x̄ = data.x̄
-        ū = data.ū
-    else
-        x̄ = data.x
-        ū = data.u
-    end
-
-    # T = data.T
-    # model = data.model
-    # n = data.n
-    # m = data.m
-
-    # for t = 1:T-1
-	# 	# println("time step $t")
-	# 	if obj.cost[t] isa QuadraticCost
-	# 		data.obj_deriv.gx[t] .= 2.0 * obj.cost[t].Q * x̄[t] + obj.cost[t].q
-	# 		data.obj_deriv.gu[t] .= 2.0 * obj.cost[t].R * ū[t] + obj.cost[t].r
-	# 		data.obj_deriv.gxx[t] .= 2.0 * obj.cost[t].Q
-	# 		data.obj_deriv.guu[t] .= 2.0 * obj.cost[t].R
-	# 		data.obj_deriv.gux[t] .= 0.0
-	# 	else
-	#         gx(z) = g(obj, z, ū[t], t)
-	#         gu(z) = g(obj, x̄[t], z, t)
-	#         gz(z) = g(obj, z[1:n[t]], z[n[t] .+ (1:m[t])], t)
-
-	#         ForwardDiff.gradient!(data.obj_deriv.gx[t], gx, x̄[t])
-	#         ForwardDiff.gradient!(data.obj_deriv.gu[t], gu, ū[t])
-	# 		ForwardDiff.hessian!(data.obj_deriv.gxx[t], gx, x̄[t])
-	#         ForwardDiff.hessian!(data.obj_deriv.guu[t], gu, ū[t])
-	#         data.obj_deriv.gux[t] .= ForwardDiff.hessian(gz,
-	#             [x̄[t]; ū[t]])[n[t] .+ (1:m[t]), 1:n[t]]
-	# 	end
-    # end
-
-	# if obj.cost[T] isa QuadraticCost
-	# 	data.obj_deriv.gx[T] .= 2.0 * obj.cost[T].Q * x̄[T] + obj.cost[T].q
-	# 	data.obj_deriv.gxx[T] .= 2.0 * obj.cost[T].Q
-	# else
-	#     gxT(z) = g(obj, z, nothing, T)
-	#     ForwardDiff.gradient!(data.obj_deriv.gx[T], gxT, x̄[T])
-	#     ForwardDiff.hessian!(data.obj_deriv.gxx[T], gxT, x̄[T])
-	# end
+function objective_derivatives!(data::ModelData; mode=:nominal)
+    obj = data.obj 
+    x = mode == :nominal ? data.x̄ : data.x 
+    u = mode == :nominal ? data.ū : data.u 
+    w = data.w 
+    gradx = data.obj_deriv.gx
+    gradu = data.obj_deriv.gu
+    hessxx = data.obj_deriv.gxx
+    hessuu = data.obj_deriv.guu
+    hessux = data.obj_deriv.gux
+    eval_obj_grad!(gradx, gradu, obj, x, u, w)
+    eval_obj_hess!(hessxx, hessuu, hessux, obj, x, u, w) 
 end
 
 function constraints_derivatives!(cons::Constraints, data::ModelData;
@@ -142,6 +84,6 @@ function objective_derivatives!(obj::AugmentedLagrangianCosts, data::ModelData;
 end
 
 function derivatives!(m_data::ModelData; mode=:nominal)
-    dynamics_derivatives!(m_data, mode=mode)
-    objective_derivatives!(m_data.obj, m_data, mode=mode)
+    model_derivatives!(m_data, mode=mode)
+    objective_derivatives!(m_data, mode=mode)
 end
