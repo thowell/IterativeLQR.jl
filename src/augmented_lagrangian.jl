@@ -1,15 +1,15 @@
-mutable struct AugmentedLagrangianCosts <: Objective
-    costs::StageCosts
-    cons::Constraints
-    ρ::Vector  # penalty
-    λ::Vector  # dual estimates
-    a::Vector  # active set
+mutable struct AugmentedLagrangianCosts{T}
+    costs::Objective{T}
+    cons::Constraints{T}
+    ρ::Vector{Vector{T}}  # penalty
+    λ::Vector{Vector{T}}  # dual estimates
+    a::Vector{Vector{Int}}  # active set
 end
 
-function augmented_lagrangian(costs::StageCosts, cons::Constraints)
-    λ = [zeros(cons.con[t].p) for t = 1:cons.T]
-    a = [ones(cons.con[t].p) for t = 1:cons.T]
-    ρ = [ones(cons.con[t].p) for t = 1:cons.T]
+function augmented_lagrangian(costs::Objective, cons::Constraints)
+    λ = [zeros(c.p) for c in cons]
+    a = [ones(Int, c.p) for c in cons]
+    ρ = [ones(c.p) for c in cons]
     AugmentedLagrangianCosts(costs, cons, ρ, λ, a)
 end
 
@@ -35,7 +35,7 @@ function objective(obj::AugmentedLagrangianCosts, x, u)
     return J
 end
 
-function active_set!(a, cons::StageConstraints, λ)
+function active_set!(a, cons::Constraints, λ)
     T = cons.T
     c = cons.data.c
 

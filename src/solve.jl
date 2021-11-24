@@ -7,9 +7,9 @@ function ddp_solve!(prob::ProblemData;
     verbose = true,
 	cache = false)
 
-	println()
-    (verbose && prob.m_data.obj isa StageCosts) && printstyled("Differential Dynamic Programming (iLQR)\n",
-		color = :red, bold = true)
+	# println()
+    # (verbose && prob.m_data.obj isa StageCosts) && printstyled("Iterative LQR\n",
+	# 	color = :red, bold = true)
 
 	# data
 	p_data = prob.p_data
@@ -122,10 +122,6 @@ function constrained_ddp_solve!(prob::ProblemData;
 		objective!(prob.s_data, prob.m_data, mode = :nominal)
 
 		# constraint violation
-		# c_max = constraint_violation(prob.m_data.obj.cons,
-		# 	prob.m_data.x̄, prob.m_data.ū,
-		# 	norm_type = con_norm_type)
-		# verbose && println("    c_max: $(prob.s_data.c_max)\n")
 		prob.s_data.c_max <= con_tol && break
 
 		# dual ascent

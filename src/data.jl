@@ -2,25 +2,20 @@
     Model Data
 """
 
-struct DynamicsDerivativesData{X, U, W}
+struct ModelDerivativesData{X,U,W}
     fx::Vector{X}
     fu::Vector{U}
 	fw::Vector{W}
 end
 
-function dynamics_derivatives_data(model::Model, T;
-	n = [model.n for t = 1:T],
-	m = [model.m for t = 1:T-1],
-	d = [model.d for t = 1:T-1])
-
-	fx = [zeros(n[t + 1], n[t]) for t = 1:T-1]
-    fu = [zeros(n[t + 1], m[t]) for t = 1:T-1]
-	fw = [zeros(n[t + 1], d[t]) for t = 1:T-1]
-
-    DynamicsDerivativesData(fx, fu, fw)
+function model_derivatives_data(model::Model)
+	fx = [zeros(d.ny, d.nx) for d in model]
+    fu = [zeros(d.ny, d.nu) for d in model]
+	fw = [zeros(d.ny, d.nw) for d in model]
+    ModelDerivativesData(fx, fu, fw)
 end
 
-struct ObjectiveDerivativesData{X, U, XX, UU, UX}
+struct ObjectiveDerivativesData{X,U,XX,UU,UX}
     gx::Vector{X}
     gu::Vector{U}
     gxx::Vector{XX}
@@ -28,20 +23,18 @@ struct ObjectiveDerivativesData{X, U, XX, UU, UX}
     gux::Vector{UX}
 end
 
-function objective_derivatives_data(model::Model, T;
-	n = [model.n for t = 1:T],
-	m = [model.m for t = 1:T-1])
-
-	gx = [ones(n[t]) for t = 1:T]
-    gu = [ones(m[t]) for t = 1:T-1]
-    gxx = [ones(n[t], n[t]) for t = 1:T]
-    guu = [ones(m[t], m[t]) for t = 1:T-1]
-    gux = [ones(m[t], n[t]) for t = 1:T-1]
-
+function objective_derivatives_data(model::Model)
+	gx = [[zeros(d.nx) for d in model]..., 
+        zeros(model[end].ny)]
+    gu = [zeros(d.nu) for d in model]
+    gxx = [[zeros(d.nx, d.nx) for d in model]..., 
+        zeros(model[end].ny, model[end].ny)]
+    guu = [zeros(d.nu, d.nu) for d in model]
+    gux = [zeros(d.nu, d.nx) for d in model]
     ObjectiveDerivativesData(gx, gu, gxx, guu, gux)
 end
 
-struct ModelData{X, U, D, S}
+struct ModelData{T,X,U,D,FX,FU,FW,OX,OU,OXX,OUU,OUX}
     # current trajectory
     x::Vector{X}
     u::Vector{U}
@@ -49,90 +42,59 @@ struct ModelData{X, U, D, S}
     # disturbance trajectory
     w::Vector{D}
 
-    # time step
-    h::S
-
-    # horizon
-    T::Int
-
     # nominal trajectory
     x̄::Vector{X}
     ū::Vector{U}
 
     # dynamics model
-    model::Model
-	n::Vector{Int}
-	m::Vector{Int}
-	d::Vector{Int}
+    model::Model{T}
 
     # objective
-    obj::Objective
+    obj::Objective{T}
 
     # dynamics derivatives data
-    dyn_deriv::DynamicsDerivativesData
+    model_deriv::ModelDerivativesData{FX,FU,FW}
 
     # objective derivatives data
-    obj_deriv::ObjectiveDerivativesData
+    obj_deriv::ObjectiveDerivativesData{OX,OU,OXX,OUU,OUX}
 
     # z = (x1...,xT,u1,...,uT-1) | Δz = (Δx1...,ΔxT,Δu1,...,ΔuT-1)
-    z::Vector{S}
-
-	analytical_derivatives::Bool
+    z::Vector{T}
 end
 
-ModelsData = Vector{ModelData}
+function model_data(model::Model, obj::Objective; 
+    w=[zeros(d.nw) for d in model])
 
-function model_data(model, obj, w, h, T;
-	n = [model.n for t = 1:T],
-	m = [model.m for t = 1:T-1],
-	d = [model.d for t = 1:T-1],
-	analytical_derivatives = false)
+	x = [[zeros(d.nx) for d in model]..., 
+            zeros(model[end].ny)]
+    u = [zeros(d.nu) for d in model]
 
-    num_var = sum(n) + sum(m)
+    x̄ = [[zeros(d.nx) for d in model]..., 
+            zeros(model[end].ny)]
+    ū = [zeros(d.nu) for d in model]
 
-	x = [zeros(n[t]) for t = 1:T]
-    u = [zeros(m[t]) for t = 1:T-1]
+    model_deriv = model_derivatives_data(model)
+    obj_deriv = objective_derivatives_data(model)
 
-    x̄ = [zeros(n[t]) for t = 1:T]
-    ū = [zeros(m[t]) for t = 1:T-1]
+    z = zeros(num_var(model))
 
-    dyn_deriv = dynamics_derivatives_data(model, T, n = n, m = m, d = d)
-    obj_deriv = objective_derivatives_data(model, T, n = n, m = m)
-
-    z = zeros(num_var)
-
-    ModelData(x, u, w, h, T, x̄, ū, model, n, m, d, obj, dyn_deriv, obj_deriv, z,
-		analytical_derivatives)
+    ModelData(x, u, w, x̄, ū, model, obj, dyn_deriv, obj_deriv, z)
 end
-
-# function Δz!(m_data::ModelData)
-# 	n = m_data.n
-# 	m = m_data.m
-# 	T = m_data.T
-#
-#     for t = 1:T
-#         idx_x = (t == 1 ? 0 : (t - 1) * n[t-1]) .+ (1:n[t])
-#         m_data.z[idx_x] = m_data.x[t] - m_data.x̄[t]
-#
-#         t == T && continue
-#
-#         idx_u = sum(n) + (t == 1 ? 0 : (t - 1) * m[t-1]) .+ (1:m[t])
-#         m_data.z[idx_u] = m_data.u[t] - m_data.ū[t]
-#     end
-# end
 
 function objective(data::ModelData; mode = :nominal)
     if mode == :nominal
-        return objective(data.obj, data.x̄, data.ū)
+        return eval_obj(data.obj, data.x̄, data.ū, data.w)
     elseif mode == :current
-        return objective(data.obj, data.x, data.u)
+        return eval_obj(data.obj, data.x, data.u, data.w)
+    else 
+        return 0.0 
     end
 end
 
 """
     Policy Data
 """
-struct PolicyData{N, M, NN, MM, MN, NNN, MNN}
+struct PolicyData{N,M,NN,MM,MN,NNN,MNN}
     # policy
     K::Vector{MN}
     k::Vector{M}
@@ -157,29 +119,28 @@ struct PolicyData{N, M, NN, MM, MN, NNN, MNN}
 	ux_tmp::Vector{MN}
 end
 
-function policy_data(model::Model, T;
-	n = [model.n for t = 1:T],
-	m = [model.m for t = 1:T-1])
+function policy_data(model::Model)
+	K = [zeros(d.nu, d.nx) for d in model]
+    k = [zeros(d.nu) for d in model]
 
-	K = [zeros(m[t], n[t]) for t = 1:T-1]
-    k = [zeros(m[t]) for t = 1:T-1]
+    K_cand = [zeros(d.nu, d.nx) for d in model]
+    k_cand = [zeros(d.nu) for d in model]
 
-    K_cand = [zeros(m[t], n[t]) for t = 1:T-1]
-    k_cand = [zeros(m[t]) for t = 1:T-1]
+    P = [[zeros(d.nx, d.nx) for d in model]..., 
+            zeros(model[end].ny, model[end].ny)]
+    p =  [[zeros(d.nx) for d in model]..., 
+            zeros(model[end].ny)]
 
-    P = [zeros(n[t], n[t]) for t = 1:T]
-    p = [zeros(n[t]) for t = 1:T]
+    Qx = [zeros(d.nx) for d in model]
+    Qu = [zeros(d.nu) for d in model]
+    Qxx = [zeros(d.nx, d.nx) for d in model]
+    Quu = [zeros(d.nu, d.nu) for d in model]
+    Qux = [zeros(d.nu, d.nx) for d in model]
 
-    Qx = [zeros(n[t]) for t = 1:T-1]
-    Qu = [zeros(m[t]) for t = 1:T-1]
-    Qxx = [zeros(n[t], n[t]) for t = 1:T-1]
-    Quu = [zeros(m[t], m[t]) for t = 1:T-1]
-    Qux = [zeros(m[t], n[t]) for t = 1:T-1]
-
-	xx̂_tmp = [zeros(n[t], n[t + 1]) for t = 1:T-1]
-	ux̂_tmp = [zeros(m[t], n[t + 1]) for t = 1:T-1]
-	uu_tmp = [zeros(m[t], m[t]) for t = 1:T-1]
-	ux_tmp = [zeros(m[t], n[t]) for t = 1:T-1]
+	xx̂_tmp = [zeros(d.nx, d.ny) for d in model]
+	ux̂_tmp = [zeros(d.nu, d.ny) for d in model]
+	uu_tmp = [zeros(d.nu, d.nu) for d in model]
+	ux_tmp = [zeros(d.nu, d.nx) for d in model]
 
     PolicyData(K, k, K_cand, k_cand, P, p, Qx, Qu, Qxx, Quu, Qux, xx̂_tmp, ux̂_tmp, uu_tmp, ux_tmp)
 end
@@ -187,69 +148,80 @@ end
 """
     Solver Data
 """
-mutable struct SolverData{T}
-    obj::T              # objective value
-    gradient::Vector{T} # Lagrangian gradient
-	c_max::T            # maximum constraint violation
+struct SolverData{T}
+    obj::Vector{T}              # objective value
+    gradient::Vector{T}         # Lagrangian gradient
+	c_max::Vector{T}            # maximum constraint violation
 
-    idx_x::Vector       # indices for state trajectory
-    idx_u::Vector       # indices for control trajectory
+    idx_x::Vector{Vector{Int}}  # indices for state trajectory
+    idx_u::Vector{Vector{Int}}  # indices for control trajectory
 
-    α::T                # step length
-    status::Bool        # solver status
+    α::Vector{T}                # step length
+    status::Vector{Bool}        # solver status
 
-	cache::Dict         #
+	cache::Dict{Symbol,Vector{T}}       # solver stats
 end
 
-cache = Dict(:obj => [], :gradient => [], :c_max => [], :α => [])
+function solver_data(model::Model{T}; max_cache=1000) where T
+    # indices x and u
+    idx_x = Vector{Int}[]
+    idx_u = Vector{Int}[] 
+    n_sum = 0 
+    m_sum = 0 
+    n_total = sum([d.nx for d in model]) + model[end].ny
+    for d in model
+        push!(idx_x, collect(n_sum .+ (1:d.nx))) 
+        push!(idx_u, collect(n_total + m_sum .+ (1:d.nu)))
+        n_sum += d.nx 
+        m_sum += d.nu 
+    end
+    push!(idx_x, collect(n_sum .+ (1:model[end].ny)))
 
-function solver_data(model::Model, T;
-	n = [model.n for t = 1:T],
-	m = [model.m for t = 1:T-1])
+    obj = [Inf]
+	c_max = [0.0]
+    α = [1.0]
+    gradient = zeros(num_var(model))
+	cache = Dict(:obj => zeros(max_cache), 
+                 :gradient => zeros(max_cache), 
+                 :c_max => zeros(max_cache), 
+                 :α => zeros(max_cache),
+                 :iter => 1)
 
-    num_var = sum(n) + sum(m)
-
-    idx_x = [sum(n[1:(t-1)]) .+ (1:n[t]) for t = 1:T]
-    idx_u = [sum(n) + sum(m[1:(t-1)]) .+ (1:m[t]) for t = 1:T-1]
-
-    obj = Inf
-	c_max = 0.0
-    gradient = zeros(num_var)
-	cache = Dict(:obj => [], :gradient => [], :c_max => [], :α => [])
-
-    SolverData(obj, gradient, c_max, idx_x, idx_u, 1.0, false, cache)
+    SolverData(obj, gradient, c_max, idx_x, idx_u, α, [false], cache)
 end
 
 function cache!(data::SolverData)
-	push!(data.cache[:obj], data.obj)
-	push!(data.cache[:gradient], data.gradient)
-	push!(data.cache[:c_max], data.c_max)
-	push!(data.cache[:α], data.α)
+    iter = data.cache[:iter] 
+    (iter > length(data[:obj])) && (@warn "solver data cache exceeded")
+	data.cache[:obj][iter] = data.obj
+	data.cache[:gradient][iter] = data.gradient
+	data.cache[:c_max][iter] = data.c_max
+	data.cache[:α][iter] = data.α
+    data.cache[:iter] = iter + 1
+    return nothing
 end
 
 function objective!(s_data::SolverData, m_data::ModelData; mode = :nominal)
 	if mode == :nominal
-		s_data.obj = objective(m_data.obj, m_data.x̄, m_data.ū)
+		s_data.obj = eval_obj(m_data.obj, m_data.x̄, m_data.ū, m_data.w)
 	elseif mode == :current
-		s_data.obj = objective(m_data.obj, m_data.x, m_data.u)
+		s_data.obj = eval_obj(m_data.obj, m_data.x, m_data.u, m_data.w)
 	end
 
 	if m_data.obj isa AugmentedLagrangianCosts
-		s_data.c_max = constraint_violation(m_data.obj.cons,
-			m_data.x, m_data.u,
+		s_data.c_max = constraint_violation(
+            m_data.obj.cons,
+			m_data.x, m_data.u, m_data.w,
 			norm_type = Inf)
 	end
 
 	return s_data.obj
 end
 
+#TODO: clean up
 function Δz!(m_data::ModelData, p_data::PolicyData, s_data::SolverData)
-	n = m_data.n
-	m = m_data.m
-	T = m_data.T
-
-    m_data.z[s_data.idx_x[1]] .= 0.0
-
+    T = length(m_data.x)
+    fill!(m_data.z, 0.0)
     for t = 1:T-1
         m_data.z[s_data.idx_u[t]] .= p_data.K[t] * m_data.z[s_data.idx_x[t]] + p_data.k[t]
         m_data.z[s_data.idx_x[t+1]] .= m_data.dyn_deriv.fx[t] * m_data.z[s_data.idx_x[t]] + m_data.dyn_deriv.fu[t] * m_data.z[s_data.idx_u[t]]
@@ -259,45 +231,23 @@ end
 """
     Problem Data
 """
-struct ProblemData
-	p_data
-	m_data
-	s_data
+struct ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,FX,FU,FW,OX,OU,OXX,OUU,OUX}
+	p_data::PolicyData{N,M,NN,MM,MN,NNN,MNN}
+	m_data::ModelData{T,X,U,D,FX,FU,FW,OX,OU,OXX,OUU,OUX}
+	s_data::SolverData{T}
 end
 
-function problem_data(model::Model, obj::StageCosts, x̄, ū, w, h, T;
-	n = [model.n for t = 1:T],
-	m = [model.m for t = 1:T-1],
-	d = [model.d for t = 1:T-1],
-	analytical_dynamics_derivatives = false)
+function problem_data(model::Model, obj::Objective; 
+    w=[zeros(d.nu) for d in model])
 
 	# allocate policy data
-    p_data = policy_data(model, T, n = n, m = m)
+    p_data = policy_data(model)
 
     # allocate model data
-    m_data = model_data(model, obj, w, h, T, n = n, m = m, d = d,
-		analytical_derivatives = analytical_dynamics_derivatives)
-    m_data.x̄ .= x̄
-    m_data.ū .= ū
+    m_data = model_data(model, obj, w=w)
 
     # allocate solver data
-    s_data = solver_data(model, T, n = n, m = m)
-
-	ProblemData(p_data, m_data, s_data)
-end
-
-function problem_data(m_data::ModelsData;
-	n = m_data[1].n,
-	m = m_data[1].m)
-
-	model = m_data[1].model
-	T = m_data[1].T
-
-	# allocate policy data
-    p_data = policy_data(model, T, n = n, m = m)
-
-    # allocate solver data
-    s_data = solver_data(model, T, n = n, m = m)
+    s_data = solver_data(model)
 
 	ProblemData(p_data, m_data, s_data)
 end
@@ -310,31 +260,25 @@ function current_trajectory(prob::ProblemData)
 	return prob.m_data.x, prob.m_data.u
 end
 
-function problem_data(model, obj::StageCosts, con_set::ConstraintSet,
-		x̄, ū, w, h, T;
-		n = [model.n for t = 1:T],
-		m = [model.m for t = 1:T-1],
-		d = [model.d for t = 1:T-1],
-		analytical_dynamics_derivatives = false)
+#TODO: constraints
+function problem_data(model::Model, obj::Objective, cons::Constraints,
+    w=[zeros(d.nu) for d in dyn])
 
-	# constraints
-	c_data = constraints_data(model, [c.p for c in con_set], T, n = n, m = m)
-	cons = StageConstraints(con_set, c_data, T)
+	# # constraints
+	# c_data = constraints_data(model, [c.p for c in cons], T, n = n, m = m)
+	# cons = StageConstraints(con_set, c_data, T)
 
-	# augmented Lagrangian
-	obj_al = augmented_lagrangian(obj, cons)
+	# # augmented Lagrangian
+	# obj_al = augmented_lagrangian(obj, cons)
 
 	# allocate policy data
-    p_data = policy_data(model, T, n = n, m = m)
+    p_data = policy_data(model)
 
     # allocate model data
-    m_data = model_data(model, obj_al, w, h, T, n = n, m = m, d = d,
-		analytical_derivatives = analytical_dynamics_derivatives)
-    m_data.x̄ .= x̄
-    m_data.ū .= ū
+    m_data = model_data(model, obj_al, w=w)
 
     # allocate solver data
-    s_data = solver_data(model, T, n = n, m = m)
+    s_data = solver_data(model)
 
 	ProblemData(p_data, m_data, s_data)
 end
