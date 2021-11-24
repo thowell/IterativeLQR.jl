@@ -9,12 +9,14 @@ struct Constraint{T}
     val_cache::Vector{T} 
     jacx_cache::Matrix{T}
     jacu_cache::Matrix{T}
-    type::Symbol
+    idx_ineq::Vector{Int}
 end
 
 Constraints{T} = Vector{Constraint{T}} where T
 
-function Constraint(f::Function, nx::Int, nu::Int, type::Symbol, nw::Int=0)
+function Constraint(f::Function, nx::Int, nu::Int; 
+    idx_ineq::Vector{Int}=collect(1:0), nw::Int=0)
+
     #TODO: option to load/save methods
     @variables x[1:nx], u[1:nu], w[1:nw]
     
@@ -33,7 +35,7 @@ function Constraint(f::Function, nx::Int, nu::Int, type::Symbol, nw::Int=0)
         jacx_func, jacu_func,
         nc, nx, nu, nw,  
         zeros(nc), zeros(nc, nx), zeros(nc, nu), 
-        type)
+        idx_ineq)
 end
 
 function Constraint()
@@ -42,11 +44,12 @@ function Constraint()
         (jx, x, u, w) -> nothing, (ju, x, u, w) -> nothing, 
         0, 0, 0, 0, 
         Float64[], Array{Float64}(undef, 0, 0), Array{Float64}(undef, 0, 0), 
-        :empty)
+        collect(1:0))
 end
 
-function eval_con!(c, idx, cons::Constraints{T}, x, u, w) where T
+function eval_con!(c, cons::Constraints{T}, x, u, w) where T
     for (t, con) in enumerate(cons)
+        con.nc == 0 && continue
         con.val(con.val_cache, x[t], u[t], w[t])
         @views c[t] .= con.val_cache
         fill!(con.val_cache, 0.0) # TODO: confirm this is necessary 
@@ -54,7 +57,9 @@ function eval_con!(c, idx, cons::Constraints{T}, x, u, w) where T
 end
 
 function eval_con_jac!(jacx, jacu, cons::Constraints{T}, x, u, w) where T
-    for (t, con) in enumerate(cons)
+    H = length(cons)
+    for (t, con) in enumerate(cons[1:H-1])
+        con.nc == 0 && continue
         con.jacx(con.jacx_cache, x[t], u[t], w[t])
         con.jacu(con.jacu_cache, x[t], u[t], w[t])
         @views jacx[t] .= con.jacx_cache
@@ -62,73 +67,51 @@ function eval_con_jac!(jacx, jacu, cons::Constraints{T}, x, u, w) where T
         fill!(con.jacx_cache, 0.0) # TODO: confirm this is necessary
         fill!(con.jacu_cache, 0.0) # TODO: confirm this is necessary
     end
+    cons[H].nc == 0 && return
+    cons[H].jacx(cons[H].jacx_cache, x[H], u[H], w[H])
+    @views jacx[H] .= cons[H].jacx_cache
+    fill!(cons[H].jacx_cache, 0.0) # TODO: confirm this is necessary
 end
 
 """
     Constraints Data
 """
-struct ConstraintsData
-    c
-    cx
-    cu
+struct ConstraintsData{T,C,CX,CU}
+    c::Vector{C}
+    cx::Vector{CX}
+    cu::Vector{CU}
+    cons::Constraints{T}
 end
 
-function constraints_data(model::Model, p::Vector, T::Int;
-	n = [model.n for t = 1:T],
-	m = [model.m for t = 1:T-1])
-
-    c = [zeros(p[t]) for t = 1:T]
-    cx = [zeros(p[t], n[t]) for t = 1:T]
-    cu = [zeros(p[t], m[t]) for t = 1:T-1]
-    ConstraintsData(c, cx, cu)
+function constraints_data(model::Model, cons::Constraints) 
+    T = length(cons)
+    c = [zeros(cons[t].nc) for t = 1:T]
+    cx = [zeros(cons[t].nc, t < T ? model[t].nx : model[T-1].ny) for t = 1:T]
+    cu = [zeros(cons[t].nc, model[t].nu) for t = 1:T-1]
+    ConstraintsData(c, cx, cu, cons)
 end
 
-# struct StageConstraint
-#     p::Int
-#     info::Dict
-# end
+function constraints!(c_data::ConstraintsData, x, u, w)
+    eval_con!(c_data.c, c_data.cons, x, u, w)
+end
 
-# ConstraintSet = Vector{StageConstraint}
+function constraint_violation(c_data::ConstraintsData; norm_type=Inf)
+    T = length(cons)
+    c_max = 0.0
+    for t = 1:T
+        c_viol = copy(c_data.c[t]) # TODO: may be unnecessary
 
-# struct StageConstraints <: Constraints
-#     con::ConstraintSet
-#     data::ConstraintsData
-#     T::Int
-# end
+        # project inequality constraints
+        for i in c_data.cons[t].idx_ineq
+            c_viol[i] = max.(0.0, c_data.c[t][i])
+        end
 
-# c!(a, cons::StageConstraints, x, u, t) = nothing
+        c_max = max(c_max, norm(c_viol, norm_type))
+    end
+    return c_max
+end
 
-# function constraints!(cons::StageConstraints, x, u)
-#     T = cons.T
-
-#     for t = 1:T-1
-#         c!(cons.data.c[t], cons, x[t], u[t], t)
-#     end
-
-#     c!(cons.data.c[T], cons, x[T], nothing, T)
-# end
-
-# function constraint_violation(cons::StageConstraints; norm_type = Inf)
-#     T = cons.T
-#     c_max = 0.0
-
-#     for t = 1:T
-#         c_viol = copy(cons.data.c[t])
-
-#         # find inequality constraints
-#         if haskey(cons.con[t].info, :inequality)
-#             for i in cons.con[t].info[:inequality]
-#                 c_viol[i] = max.(0.0, cons.data.c[t][i])
-#             end
-#         end
-
-#         c_max = max(c_max, norm(c_viol, norm_type))
-#     end
-
-#     return c_max
-# end
-
-# function constraint_violation(cons::StageConstraints, x, u; norm_type = Inf)
-#     constraints!(cons, x, u)
-#     constraint_violation(cons, norm_type = norm_type)
-# end
+function constraint_violation(c_data::ConstraintsData, x, u, w; norm_type=Inf)
+    constraints!(c_data, x, u, w)
+    constraint_violation(c_data, norm_type=norm_type)
+end

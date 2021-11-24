@@ -43,10 +43,6 @@ function forward_pass!(p_data::PolicyData, m_data::ModelData, s_data::SolverData
             @show norm(s_data.gradient)
         end
 
-        @show J 
-        @show J_prev 
-        @show c1 
-        @show delta_grad_product
         if (J <= J_prev + c1 * s_data.α[1] * delta_grad_product) && (linesearch == :wolfe ? (-m_data.z' * s_data.gradient <= -c2 * delta_grad_product) : true)
             # update nominal
             m_data.x̄ .= deepcopy(m_data.x)

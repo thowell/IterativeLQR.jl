@@ -1,31 +1,32 @@
-mutable struct AugmentedLagrangianCosts{T}
+mutable struct AugmentedLagrangianCosts{T,C,CX,CU}
     costs::Objective{T}
-    cons::Constraints{T}
-    ρ::Vector{Vector{T}}  # penalty
-    λ::Vector{Vector{T}}  # dual estimates
-    a::Vector{Vector{Int}}  # active set
+    c_data::ConstraintsData{T,C,CX,CU}
+    ρ::Vector{Vector{T}}               # penalty
+    λ::Vector{Vector{T}}               # dual estimates
+    a::Vector{Vector{Int}}             # active set
 end
 
-function augmented_lagrangian(costs::Objective, cons::Constraints)
-    λ = [zeros(c.p) for c in cons]
-    a = [ones(Int, c.p) for c in cons]
-    ρ = [ones(c.p) for c in cons]
-    AugmentedLagrangianCosts(costs, cons, ρ, λ, a)
+function augmented_lagrangian(model::Model{T}, costs::Objective{T}, cons::Constraints{T}) where T
+    ρ = [ones(c.nc) for c in cons]
+    λ = [zeros(c.nc) for c in cons]
+    a = [ones(Int, c.nc) for c in cons]
+    c_data = constraints_data(model, cons)
+    AugmentedLagrangianCosts(costs, c_data, ρ, λ, a)
 end
 
-function objective(obj::AugmentedLagrangianCosts, x, u)
+function eval_obj(obj::AugmentedLagrangianCosts, x, u, w)
     # costs
-    J = objective(obj.costs, x, u)
+    J = eval_obj(obj.costs, x, u, w)
 
     # constraints
-    T = obj.cons.T
-    c = obj.cons.data.c
+    c = obj.c_data.c
     ρ = obj.ρ
     λ = obj.λ
     a = obj.a
+    T = length(c)
 
-    constraints!(obj.cons, x, u)
-    active_set!(a, obj.cons, λ)
+    constraints!(obj.c_data, x, u, w)
+    active_set!(a, obj.c_data, λ)
 
     for t = 1:T
         J += λ[t]' * c[t]
@@ -35,19 +36,20 @@ function objective(obj::AugmentedLagrangianCosts, x, u)
     return J
 end
 
-function active_set!(a, cons::Constraints, λ)
-    T = cons.T
-    c = cons.data.c
+function active_set!(a, c_data::ConstraintsData, λ)
+    c = c_data.c
+    T = length(c)
 
     for t = 1:T
         # set all constraints active
-        fill!(a[t], 1.0)
+        fill!(a[t], 1)
 
-        # find inequality constraints
-        if haskey(cons.con[t].info, :inequality)
-            for i in cons.con[t].info[:inequality]
+        # check inequality constraints
+        idx = c_data.cons[t].idx_ineq
+        if length(idx) > 0
+            for i in idx
                 # check active-set criteria
-                (c[t][i] < 0.0 && λ[t][i] == 0.0) && (a[t][i] = 0.0)
+                @show (c[t][i] < 0.0 && λ[t][i] == 0.0) && (a[t][i] = 0.0)
             end
         end
     end
@@ -56,21 +58,24 @@ end
 function augmented_lagrangian_update!(obj::AugmentedLagrangianCosts;
         s = 10.0, max_penalty = 1.0e12)
     # constraints
-    T = obj.cons.T
-    c = obj.cons.data.c
+    c = obj.c_data.c
     ρ = obj.ρ
     λ = obj.λ
     a = obj.a
+    T = length(c)
 
     for t = 1:T
         # dual estimate update
         λ[t] .+= ρ[t] .* c[t]
 
         # inequality projection
-        if haskey(obj.cons.con[t].info, :inequality)
-            idx = obj.cons.con[t].info[:inequality]
+        idx = obj.c_data.cons[t].idx_ineq
+        if length(idx) > 0
             λ[t][idx] = max.(0.0, view(λ[t], idx))
         end
+
         ρ[t] .= min.(s .* ρ[t], max_penalty)
     end
 end
+
+Base.length(obj::AugmentedLagrangianCosts) = length(obj.costs)

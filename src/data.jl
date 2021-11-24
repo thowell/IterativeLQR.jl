@@ -34,7 +34,7 @@ function objective_derivatives_data(model::Model)
     ObjectiveDerivativesData(gx, gu, gxx, guu, gux)
 end
 
-struct ModelData{T,X,U,D,FX,FU,FW,OX,OU,OXX,OUU,OUX}
+struct ModelData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
     # current trajectory
     x::Vector{X}
     u::Vector{U}
@@ -50,7 +50,7 @@ struct ModelData{T,X,U,D,FX,FU,FW,OX,OU,OXX,OUU,OUX}
     model::Model{T}
 
     # objective
-    obj::Objective{T}
+    obj::O
 
     # dynamics derivatives data
     model_deriv::ModelDerivativesData{FX,FU,FW}
@@ -62,7 +62,7 @@ struct ModelData{T,X,U,D,FX,FU,FW,OX,OU,OXX,OUU,OUX}
     z::Vector{T}
 end
 
-function model_data(model::Model, obj::Objective; 
+function model_data(model::Model, obj; 
     w=[zeros(d.nw) for d in model])
 
     @assert length(w) == length(model)
@@ -213,8 +213,8 @@ function objective!(s_data::SolverData, m_data::ModelData; mode = :nominal)
 	end
 
 	if m_data.obj isa AugmentedLagrangianCosts
-		s_data.c_max = constraint_violation(
-            m_data.obj.cons,
+		s_data.c_max[1] = constraint_violation(
+            m_data.obj.c_data,
 			m_data.x, m_data.u, m_data.w,
 			norm_type = Inf)
 	end
@@ -235,9 +235,9 @@ end
 """
     Problem Data
 """
-struct ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,FX,FU,FW,OX,OU,OXX,OUU,OUX}
+struct ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
 	p_data::PolicyData{N,M,NN,MM,MN,NNN,MNN}
-	m_data::ModelData{T,X,U,D,FX,FU,FW,OX,OU,OXX,OUU,OUX}
+	m_data::ModelData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
 	s_data::SolverData{T}
 end
 
@@ -256,26 +256,29 @@ function problem_data(model::Model, obj::Objective;
 	ProblemData(p_data, m_data, s_data)
 end
 
+function trajectories(m_data::ModelData; mode=:nominal) 
+    x = mode == :nominal ? m_data.x̄ : m_data.x 
+    u = mode == :nominal ? m_data.ū : m_data.u 
+    w = m_data.w
+    return x, u, w 
+end
+
 function nominal_trajectory(prob::ProblemData)
-	return prob.m_data.x̄, prob.m_data.ū
+	return prob.m_data.x̄, prob.m_data.ū[1:end-1]
 end
 
 function current_trajectory(prob::ProblemData)
-	return prob.m_data.x, prob.m_data.u
+	return prob.m_data.x, prob.m_data.u[1:end-1]
 end
 
 #TODO: constraints
 function problem_data(model::Model, obj::Objective, cons::Constraints,
-    w=[zeros(d.nu) for d in dyn])
+    w=[zeros(d.nu) for d in model])
 
-	# # constraints
-	# c_data = constraints_data(model, [c.p for c in cons], T, n = n, m = m)
-	# cons = StageConstraints(con_set, c_data, T)
+	# augmented Lagrangian
+	obj_al = augmented_lagrangian(model, obj, cons)
 
-	# # augmented Lagrangian
-	# obj_al = augmented_lagrangian(obj, cons)
-
-	# allocate policy data
+    # allocate policy data  
     p_data = policy_data(model)
 
     # allocate model data

@@ -42,7 +42,7 @@ function ilqr_solve!(prob::ProblemData;
         verbose && println("     iter: $i
              cost: $(s_data.obj[1])
 			 grad_norm: $(grad_norm)
-			 c_max: $(s_data.c_max)
+			 c_max: $(s_data.c_max[1])
 			 α: $(s_data.α[1])")
 		grad_norm < grad_tol && break
         abs(s_data.obj[1] - obj_prev) < obj_tol ? break : (obj_prev = s_data.obj[1])
@@ -72,7 +72,7 @@ end
 """
     augmented Lagrangian solve
 """
-function constrained_ddp_solve!(prob::ProblemData;
+function constrained_ilqr_solve!(prob::ProblemData;
     linesearch = :armijo,
     max_iter = 10,
 	max_al_iter = 5,
@@ -87,8 +87,9 @@ function constrained_ddp_solve!(prob::ProblemData;
 	cache = false,
     verbose = true)
 
+     
 	println()
-	verbose && printstyled("Differential Dynamic Programming\n",
+	verbose && printstyled("Iterative LQR\n",
 		color = :red, bold = true)
 
 	# initial penalty
@@ -102,7 +103,7 @@ function constrained_ddp_solve!(prob::ProblemData;
 		verbose && println("  al iter: $i")
 
 		# primal minimization
-		stats = ddp_solve!(prob,
+		stats = ilqr_solve!(prob,
             linesearch = linesearch,
             α_min = α_min,
 		    max_iter = max_iter,
@@ -110,18 +111,16 @@ function constrained_ddp_solve!(prob::ProblemData;
 		    grad_tol = grad_tol,
 			cache = cache,
 		    verbose = verbose)
-
         push!(stats_al[:stats_ilqr], stats)
 
 		# update trajectories
-		objective!(prob.s_data, prob.m_data, mode = :nominal)
-
+		objective!(prob.s_data, prob.m_data, mode=:nominal)
 		# constraint violation
-		prob.s_data.c_max <= con_tol && break
+		prob.s_data.c_max[1] <= con_tol && break
 
 		# dual ascent
 		augmented_lagrangian_update!(prob.m_data.obj,
-			s = ρ_scale, max_penalty = ρ_max)
+			s=ρ_scale, max_penalty=ρ_max)
 	end
 
     return stats_al
