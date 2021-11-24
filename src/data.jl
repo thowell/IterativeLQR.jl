@@ -292,11 +292,12 @@ end
 
 function initialize_controls!(prob::ProblemData, u) 
     for (t, ut) in enumerate(u) 
-        # prob.m_data.u[t] .= copy(ut) 
         prob.m_data.ū[t] .= copy(ut) 
     end 
 end
 
-function initialize_state!(prob::ProblemData, x1) 
-    prob.m_data.x̄[1] .= copy(x1) 
+function initialize_states!(prob::ProblemData, x) 
+    for (t, xt) in enumerate(x)
+        prob.m_data.x̄[t] .= copy(xt) 
+    end
 end
