@@ -74,57 +74,57 @@ function acrobot(x, u, w)
     return [x[3]; x[4]; qdd[1]; qdd[2]]
 end
 
-function midpoint_implicit(y, x, u, w)
-    h = 0.05 # timestep 
-    y - (x + h * acrobot(0.5 * (x + y), u, w))
+function midpoint_explicit(x, u, w)
+    h = 0.1 # timestep 
+    x + h * acrobot(x + 0.5 * h * acrobot(x, u, w), u, w)
 end
 
 # ## model
-dt = Dynamics(midpoint_implicit, nx, nx, nu, nw=nw)
-dyn = [dt for t = 1:T-1] 
-model = DynamicsModel(dyn)
+dyn = Dynamics(midpoint_explicit, nx, nu, nw)
+model = [dyn for t = 1:T-1] 
 
 # ## initialization
 x1 = [0.0; 0.0; 0.0; 0.0] 
-xT = [0.0; π; 0.0; 0.0] 
+xT = [0.0; π; 0.0; 0.0]
+ū = [1.0 * randn(nu) for t = 1:T-1] 
 
 # ## objective 
 ot = (x, u, w) -> 0.1 * dot(x[3:4], x[3:4]) + 0.1 * dot(u, u)
 oT = (x, u, w) -> 0.1 * dot(x[3:4], x[3:4])
-ct = Cost(ot, nx, nu, nw, [t for t = 1:T-1])
-cT = Cost(oT, nx, 0, nw, [T])
-obj = [ct, cT]
+ct = Cost(ot, nx, nu, nw)
+cT = Cost(oT, nx, 0, nw)
+obj = [[ct for t = 1:T-1]..., cT]
 
 # ## constraints
-x_init = Bound(nx, nu, [1], xl=x1, xu=x1)
-x_goal = Bound(nx, 0, [T], xl=xT, xu=xT)
-cons = ConstraintSet([x_init, x_goal], [StageConstraint()])
-
-# ## problem 
-trajopt = TrajectoryOptimizationProblem(obj, model, cons)
-s = Solver(trajopt, options=Options())
-
-# ## initialize
-x_interpolation = linear_interpolation(x1, xT, T)
-u_guess = [1.0 * randn(nu) for t = 1:T-1]
-z0 = zeros(s.p.num_var)
-for (t, idx) in enumerate(s.p.trajopt.model.idx.x)
-    z0[idx] = x_interpolation[t]
+function terminal_con(x, u, w) 
+    [
+     x - xT; # goal 
+    ]
 end
-for (t, idx) in enumerate(s.p.trajopt.model.idx.u)
-    z0[idx] = u_guess[t]
-end
-initialize!(s, z0)
+
+cont = Constraint()
+conT = Constraint(terminal_con, nx, nu)
+cons = [[cont for t = 1:T-1]..., conT] 
+
+# ## problem
+prob = problem_data(model, obj, cons)
+initialize_controls!(prob, ū) 
+initialize_state!(prob, x1)
 
 # ## solve
-@time solve!(s)
+constrained_ilqr_solve!(prob, 
+    linesearch=:armijo,
+    α_min=1.0e-5,
+    obj_tol=1.0e-3,
+    grad_tol=1.0e-3,
+    max_iter=100,
+    max_al_iter=10,
+    ρ_init=1.0,
+    ρ_scale=10.0)
 
 # ## solution
-@show trajopt.x[1]
-@show trajopt.x[T]
+x_sol, u_sol = nominal_trajectory(prob)
 
-# ## state
-plot(hcat(trajopt.x...)')
-
-# ## control
-plot(hcat(trajopt.u[1:end-1]..., trajopt.u[end-1])', linetype = :steppost)
+# ## visuals
+plot(hcat(x_sol...)')
+plot(hcat(u_sol...)', linetype=:steppost)

@@ -23,12 +23,10 @@ function Dynamics(f::Function, nx::Int, nu::Int, nw::Int=0)
     jacx_func = eval(Symbolics.build_function(jacx, x, u, w)[2]);
     jacu_func = eval(Symbolics.build_function(jacu, x, u, w)[2]);
     ny = length(y)
-    njx, mjx = size(jacx)
-    nju, mju = size(jacu)
 
     return Dynamics(val_func, jacx_func, jacu_func, 
                     ny, nx, nu, nw, 
-                    zeros(ny), zeros(njx, mjx), zeros(nju, mju))
+                    zeros(ny), zeros(ny, nx), zeros(ny, nu))
 end
 
 function step!(d::Dynamics, x, u, w) 
@@ -56,3 +54,9 @@ end
 
 num_var(model::Model) = sum([d.nx + d.nu for d in model]) + model[end].ny
 
+# user-provided dynamics and gradients
+function Dynamics(f::Function, fx::Function, fu::Function, ny::Int, nx::Int, nu::Int, nw::Int=0)  
+    return Dynamics(f, fx, fu, 
+                    ny, nx, nu, nw, 
+                    zeros(ny), zeros(ny, nx), zeros(ny, nu))
+end

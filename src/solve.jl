@@ -49,7 +49,7 @@ function ilqr_solve!(prob::ProblemData;
         !s_data.status[1] && break
     end
 
-    return stats
+    return stats;
 end
 
 """
@@ -123,7 +123,7 @@ function constrained_ilqr_solve!(prob::ProblemData;
 			s=ρ_scale, max_penalty=ρ_max)
 	end
 
-    return stats_al
+    return stats_al;
 end
 
 function ilqr_iterations(stats)

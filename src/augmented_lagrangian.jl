@@ -49,7 +49,7 @@ function active_set!(a, c_data::ConstraintsData, λ)
         if length(idx) > 0
             for i in idx
                 # check active-set criteria
-                @show (c[t][i] < 0.0 && λ[t][i] == 0.0) && (a[t][i] = 0.0)
+                @show (c[t][i] < 0.0 && λ[t][i] == 0.0) && (a[t][i] = 0)
             end
         end
     end

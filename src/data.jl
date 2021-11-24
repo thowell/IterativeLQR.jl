@@ -290,16 +290,13 @@ function problem_data(model::Model, obj::Objective, cons::Constraints,
 	ProblemData(p_data, m_data, s_data)
 end
 
-function initialize_control!(prob::ProblemData, u) 
+function initialize_controls!(prob::ProblemData, u) 
     for (t, ut) in enumerate(u) 
         # prob.m_data.u[t] .= copy(ut) 
         prob.m_data.ū[t] .= copy(ut) 
     end 
 end
 
-function initialize_state!(prob::ProblemData, x) 
-    for (t, xt) in enumerate(x) 
-        # prob.m_data.x[t] .= copy(xt) 
-        prob.m_data.x̄[t] .= copy(xt) 
-    end 
+function initialize_state!(prob::ProblemData, x1) 
+    prob.m_data.x̄[1] .= copy(x1) 
 end
