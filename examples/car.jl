@@ -35,7 +35,7 @@ xT = [1.0; 1.0; 0.0]
 
 # ## rollout
 ū = [1.0e-2 * [1.0; 0.1] for t = 1:T-1]
-w = [zeros(nw) for t = 1:T-1] 
+w = [zeros(nw) for t = 1:T] 
 x̄ = rollout(model, x1, ū, w)
 
 # ## objective 

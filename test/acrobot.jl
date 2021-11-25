@@ -78,7 +78,7 @@
     x1 = [0.0; 0.0; 0.0; 0.0] 
     xT = [0.0; π; 0.0; 0.0]
     ū = [1.0e-1 * randn(nu) for t = 1:T-1] 
-    w = [zeros(nw) for t = 1:T-1]
+    w = [zeros(nw) for t = 1:T]
     x̄ = rollout(model, x1, ū, w)
 
     # ## objective 
@@ -92,7 +92,7 @@
     goal(x, u, w) = x - xT
 
     cont = Constraint()
-    conT = Constraint(goal, nx, nu)
+    conT = Constraint(goal, nx, 0)
     cons = [[cont for t = 1:T-1]..., conT] 
 
     # ## problem

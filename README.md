@@ -1,3 +1,5 @@
+[![CI](https://github.com/thowell/IterativeLQR.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/thowell/IterativeLQR.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/thowell/IterativeLQR.jl/branch/main/graph/badge.svg?token=FGM33O1K1E)](https://codecov.io/gh/thowell/IterativeLQR.jl)
 # IterativeLQR.jl
 A Julia package for solving constrained trajectory optimization problems with iterative LQR (iLQR). 
 

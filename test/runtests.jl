@@ -2,7 +2,6 @@ using Test
 using Symbolics
 using ForwardDiff
 using LinearAlgebra
-using SparseArrays
 using IterativeLQR
 
 include("objective.jl")

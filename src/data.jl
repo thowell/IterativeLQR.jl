@@ -63,9 +63,10 @@ struct ModelData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
 end
 
 function model_data(model::Model, obj; 
-    w=[zeros(d.nw) for d in model])
+    w=[[zeros(d.nw) for d in model]..., zeros(0)])
 
-    @assert length(w) == length(model)
+    length(w) == length(model) && (w = [w..., zeros(0)])
+    @assert length(model) + 1 == length(w)
     @assert length(model) + 1 == length(obj)
 
 	x = [[zeros(d.nx) for d in model]..., 
@@ -75,8 +76,6 @@ function model_data(model::Model, obj;
     x̄ = [[zeros(d.nx) for d in model]..., 
             zeros(model[end].ny)]
     ū = [[zeros(d.nu) for d in model]..., zeros(0)]
-
-    length(w) == length(model) && (w = [w..., zeros(0)])
 
     model_deriv = model_derivatives_data(model)
     obj_deriv = objective_derivatives_data(model)
@@ -242,7 +241,7 @@ struct ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
 end
 
 function problem_data(model::Model, obj::Objective; 
-    w=[zeros(d.nu) for d in model])
+    w=[[zeros(d.nw) for d in model]..., zeros(0)])
 
 	# allocate policy data
     p_data = policy_data(model)
@@ -273,7 +272,7 @@ end
 
 #TODO: constraints
 function problem_data(model::Model, obj::Objective, cons::Constraints,
-    w=[zeros(d.nu) for d in model])
+    w=[[zeros(d.nw) for d in model]..., zeros(0)])
 
 	# augmented Lagrangian
 	obj_al = augmented_lagrangian(model, obj, cons)

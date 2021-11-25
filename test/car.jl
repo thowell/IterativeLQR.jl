@@ -1,4 +1,4 @@
-@testset "Solve: acrobot" begin 
+@testset "Solve: car" begin 
     # ## horizon 
     T = 51 
 
@@ -26,14 +26,14 @@
 
     # ## rollout
     ū = [1.0e-2 * [1.0; 0.1] for t = 1:T-1]
-    w = [zeros(nw) for t = 1:T-1] 
+    w = [zeros(nw) for t = 1:T] 
     x̄ = rollout(model, x1, ū, w)
 
     # ## objective 
     ot = (x, u, w) -> 1.0 * dot(x - xT, x - xT) + 1.0e-2 * dot(u, u)
     oT = (x, u, w) -> 1000.0 * dot(x - xT, x - xT)
     ct = Cost(ot, nx, nu, nw)
-    cT = Cost(oT, nx, 0, nw)
+    cT = Cost(oT, nx, 0, 0)
     obj = [[ct for t = 1:T-1]..., cT]
 
     # ## constraints
@@ -61,7 +61,7 @@
     end
 
     cont = Constraint(stage_con, nx, nu, idx_ineq=collect(1:5))
-    conT = Constraint(terminal_con, nx, nu, idx_ineq=collect(3 .+ (1:1)))
+    conT = Constraint(terminal_con, nx, 0, idx_ineq=collect(3 .+ (1:1)))
     cons = [[cont for t = 1:T-1]..., conT] 
 
     # ## problem

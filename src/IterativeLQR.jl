@@ -5,7 +5,6 @@ using Symbolics
 using Scratch 
 using Parameters 
 using JLD2
-using SparseArrays
 
 include("objective.jl")
 include("dynamics.jl")

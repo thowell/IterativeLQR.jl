@@ -87,6 +87,7 @@ model = [dyn for t = 1:T-1]
 x1 = [0.0; 0.0; 0.0; 0.0] 
 xT = [0.0; π; 0.0; 0.0]
 ū = [1.0 * randn(nu) for t = 1:T-1] 
+w = [zeros(nw) for t = 1:T]
 x̄ = rollout(model, x1, ū, w)
 
 # ## objective 
