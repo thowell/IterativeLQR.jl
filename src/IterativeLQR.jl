@@ -31,8 +31,7 @@ export Dynamics
 export rollout, 
     step!,
     problem_data, 
-    initialize_controls!, 
-    initialize_state!, 
+    initialize_controls!, initialize_states!, 
     ilqr_solve!, constrained_ilqr_solve!,
     nominal_trajectory
 
