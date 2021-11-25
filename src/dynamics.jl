@@ -34,12 +34,12 @@ function step!(d::Dynamics, x, u, w)
     return d.val_cache
 end
 
-function eval_con!(c, cons::Model, x, u, w) 
-    for (t, con) in enumerate(cons)
-        step!(con, x[t], u[t], w[t])
-        @views x[t+1] .= con.val_cache
-    end
-end
+# function eval_con!(c, cons::Model, x, u, w) 
+#     for (t, con) in enumerate(cons)
+#         step!(con, x[t], u[t], w[t])
+#         @views c[t] .= con.val_cache
+#     end
+# end
 
 function eval_con_jac!(jx, ju, cons::Model, x, u, w)
     for (t, con) in enumerate(cons) 
