@@ -101,7 +101,7 @@ obj = [[ct for t = 1:T-1]..., cT]
 goal(x, u, w) = x - xT
 
 cont = Constraint()
-conT = Constraint(goal, nx, nu)
+conT = Constraint(goal, nx, 0)
 cons = [[cont for t = 1:T-1]..., conT] 
 
 # ## problem

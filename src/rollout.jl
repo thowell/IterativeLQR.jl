@@ -28,7 +28,8 @@ function rollout!(p_data::PolicyData, m_data::ModelData; α=1.0)
     end
 end
 
-function rollout(model::Model, x1, u, w)
+function rollout(model::Model, x1, u; 
+    w=[zeros(d.nw) for d in model])
     x_hist = [x1]
     for (t, dyn) in enumerate(model) 
         push!(x_hist, copy(step!(dyn, x_hist[end], u[t], w[t])))

@@ -85,11 +85,11 @@ end
 function constrained_ilqr_solve!(prob::ProblemData;
     linesearch=:armijo,
     max_iter=10,
-	max_al_iter=5,
+	max_al_iter=10,
     α_min=1.0e-5,
     obj_tol=1.0e-3,
     grad_tol=1.0e-3,
-	con_tol=1.0e-2,
+	con_tol=1.0e-3,
 	con_norm_type=Inf,
 	ρ_init=1.0,
 	ρ_scale=10.0,
@@ -108,7 +108,6 @@ function constrained_ilqr_solve!(prob::ProblemData;
 	for (t, ρ) in enumerate(prob.m_data.obj.ρ)
         fill!(ρ, ρ_init)
 	end
-
 
 	for i = 1:max_al_iter
 		verbose && println("  al iter: $i")
