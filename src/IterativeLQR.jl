@@ -31,7 +31,7 @@ export rollout,
     step!,
     problem_data, 
     initialize_controls!, initialize_states!, 
-    ilqr_solve!, constrained_ilqr_solve!,
-    nominal_trajectory
+    solve!,
+    get_trajectory
 
 end # module

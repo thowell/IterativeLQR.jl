@@ -101,7 +101,7 @@
     initialize_states!(prob, x̄)
 
     # ## solve
-    constrained_ilqr_solve!(prob, 
+    solve!(prob, 
         verbose=false,
         linesearch=:armijo,
         α_min=1.0e-5,
@@ -113,7 +113,11 @@
         ρ_scale=10.0)
 
     # ## solution
-    x_sol, u_sol = nominal_trajectory(prob)
+    x_sol, u_sol = get_trajectory(prob)
 
     @test norm(x_sol[T] - xT, Inf) < 1.0e-3
+
+    # ## allocations
+    # info = @benchmark solve!($prob, a, b) setup=(a=deepcopy(x̄), b=deepcopy(ū))
+    # @test info.allocs == 0
 end

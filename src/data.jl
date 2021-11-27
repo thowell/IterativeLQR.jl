@@ -15,6 +15,15 @@ function model_derivatives_data(model::Model)
     ModelDerivativesData(fx, fu, fw)
 end
 
+function reset!(data::ModelDerivativesData) 
+    T = length(data.fx) + 1
+    for t = 1:T-1 
+        fill!(data.fx[t], 0.0) 
+        fill!(data.fu[t], 0.0) 
+        # fill!(data.fw[t], 0.0) 
+    end 
+end
+
 struct ObjectiveDerivativesData{X,U,XX,UU,UX}
     gx::Vector{X}
     gu::Vector{U}
@@ -34,7 +43,19 @@ function objective_derivatives_data(model::Model)
     ObjectiveDerivativesData(gx, gu, gxx, guu, gux)
 end
 
-struct ModelData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
+function reset!(data::ObjectiveDerivativesData) 
+    T = length(data.gx) 
+    for t = 1:T 
+        fill!(data.gx[t], 0.0) 
+        fill!(data.gxx[t], 0.0) 
+        t == T && continue
+        fill!(data.gu[t], 0.0)
+        fill!(data.guu[t], 0.0)
+        fill!(data.gux[t], 0.0)
+    end 
+end
+
+mutable struct ModelData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
     # current trajectory
     x::Vector{X}
     u::Vector{U}
@@ -93,6 +114,15 @@ function objective(data::ModelData; mode = :nominal)
     else 
         return 0.0 
     end
+end
+
+function update_nominal_trajectory!(data::ModelData) 
+    T = length(data.x) 
+    for t = 1:T 
+        data.x̄[t] .= data.x[t] 
+        t == T && continue 
+        data.ū[t] .= data.u[t] 
+    end 
 end
 
 """
@@ -226,15 +256,22 @@ function Δz!(m_data::ModelData, p_data::PolicyData, s_data::SolverData)
     T = length(m_data.x)
     fill!(m_data.z, 0.0)
     for t = 1:T-1
-        m_data.z[s_data.idx_u[t]] .= p_data.K[t] * m_data.z[s_data.idx_x[t]] + p_data.k[t]
-        m_data.z[s_data.idx_x[t+1]] .= m_data.model_deriv.fx[t] * m_data.z[s_data.idx_x[t]] + m_data.model_deriv.fu[t] * m_data.z[s_data.idx_u[t]]
+        zx = @views m_data.z[s_data.idx_x[t]]
+        zu = @views m_data.z[s_data.idx_u[t]]
+        zy = @views m_data.z[s_data.idx_x[t+1]]
+        zu .= p_data.k[t] 
+        mul!(zu, p_data.K[t], zx, 1.0, 1.0)
+        mul!(zy, m_data.model_deriv.fu[t], zu)
+        mul!(zy, m_data.model_deriv.fx[t], zx, 1.0, 1.0)
+        # m_data.z[s_data.idx_u[t]] .= p_data.K[t] * m_data.z[s_data.idx_x[t]] + p_data.k[t]
+        # m_data.z[s_data.idx_x[t+1]] .= m_data.model_deriv.fx[t] * m_data.z[s_data.idx_x[t]] + m_data.model_deriv.fu[t] * m_data.z[s_data.idx_u[t]]
     end
 end
 
 """
     Problem Data
 """
-struct ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
+mutable struct ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
 	p_data::PolicyData{N,M,NN,MM,MN,NNN,MNN}
 	m_data::ModelData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
 	s_data::SolverData{T}
@@ -262,7 +299,7 @@ function trajectories(m_data::ModelData; mode=:nominal)
     return x, u, w 
 end
 
-function nominal_trajectory(prob::ProblemData)
+function get_trajectory(prob::ProblemData)
 	return prob.m_data.x̄, prob.m_data.ū[1:end-1]
 end
 
@@ -291,12 +328,12 @@ end
 
 function initialize_controls!(prob::ProblemData, u) 
     for (t, ut) in enumerate(u) 
-        prob.m_data.ū[t] .= copy(ut) 
+        prob.m_data.ū[t] .= ut
     end 
 end
 
 function initialize_states!(prob::ProblemData, x) 
     for (t, xt) in enumerate(x)
-        prob.m_data.x̄[t] .= copy(xt) 
+        prob.m_data.x̄[t] .= xt
     end
 end

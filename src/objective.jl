@@ -53,33 +53,29 @@ end
 
 function eval_obj_grad!(gradx, gradu, obj::Objective, x, u, w)
     T = length(obj)
-    for (t, cost) in enumerate(obj[1:end-1])
+    for (t, cost) in enumerate(obj)
         cost.gradx(cost.gradx_cache, x[t], u[t], w[t])
-        cost.gradu(cost.gradu_cache, x[t], u[t], w[t])
         @views gradx[t] .= cost.gradx_cache
-        @views gradu[t] .= cost.gradu_cache
         fill!(cost.gradx_cache, 0.0) # TODO: confirm this is necessary
+        t == T && continue
+        cost.gradu(cost.gradu_cache, x[t], u[t], w[t])
+        @views gradu[t] .= cost.gradu_cache
         fill!(cost.gradu_cache, 0.0) # TODO: confirm this is necessary
     end
-    obj[T].gradx(obj[T].gradx_cache, x[T], u[T], w[T])
-    @views gradx[T] .= obj[T].gradx_cache
-    fill!(obj[T].gradx_cache, 0.0) # TODO: confirm this is necessary
 end
 
 function eval_obj_hess!(hessxx, hessuu, hessux, obj::Objective, x, u, w)
     T = length(obj) 
-    for (t, cost) in enumerate(obj[1:T-1])
+    for (t, cost) in enumerate(obj)
         cost.hessxx(cost.hessxx_cache, x[t], u[t], w[t])
+        @views hessxx[t] .+= cost.hessxx_cache
+        fill!(cost.hessxx_cache, 0.0) # TODO: confirm this is necessary
+        t == T && continue
         cost.hessuu(cost.hessuu_cache, x[t], u[t], w[t])
         cost.hessux(cost.hessux_cache, x[t], u[t], w[t])
-        @views hessxx[t] .+= cost.hessxx_cache
         @views hessuu[t] .+= cost.hessuu_cache
         @views hessux[t] .+= cost.hessux_cache
-        fill!(cost.hessxx_cache, 0.0) # TODO: confirm this is necessary
         fill!(cost.hessuu_cache, 0.0) # TODO: confirm this is necessary
         fill!(cost.hessux_cache, 0.0) # TODO: confirm this is necessary
     end
-    obj[T].hessxx(obj[T].hessxx_cache, x[T], u[T], w[T])
-    @views hessxx[T] .+= obj[T].hessxx_cache
-    fill!(obj[T].hessxx_cache, 0.0) # TODO: confirm this is necessary
 end

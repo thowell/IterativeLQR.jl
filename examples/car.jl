@@ -79,17 +79,14 @@ initialize_controls!(prob, ū)
 initialize_states!(prob, x̄)
 
 # ## solve
-constrained_ilqr_solve!(prob, 
-    linesearch=:armijo,
-    verbose=false,
-    α_min=1.0e-5,
-    obj_tol=1.0e-3,
-    grad_tol=1.0e-3,
-    max_iter=100,
-    max_al_iter=10,
-    con_tol=1.0e-3,
-    ρ_init=1.0,
-    ρ_scale=10.0)
+solve!(prob, verbose=true)
 
 # ## solution
-x_sol, u_sol = nominal_trajectory(prob)
+x_sol, u_sol = get_trajectory(prob)
+
+# ## visualize
+plot(hcat(x_sol...)')
+plot(hcat(u_sol[1:end-1]...)', linetype=:steppost)
+
+# ## benchmark allocations + timing
+info = @benchmark solve!($prob, x̄, ū) setup=(x̄=deepcopy(x̄), ū=deepcopy(ū))

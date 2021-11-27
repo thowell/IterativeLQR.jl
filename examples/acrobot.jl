@@ -101,28 +101,24 @@ obj = [[ct for t = 1:T-1]..., cT]
 goal(x, u, w) = x - xT
 
 cont = Constraint()
-conT = Constraint(terminal_con, nx, nu)
+conT = Constraint(goal, nx, nu)
 cons = [[cont for t = 1:T-1]..., conT] 
 
 # ## problem
 prob = problem_data(model, obj, cons)
-initialize_controls!(prob, ū) 
+initialize_controls!(prob, ū)
 initialize_states!(prob, x̄)
 
 # ## solve
-constrained_ilqr_solve!(prob, 
-    linesearch=:armijo,
-    α_min=1.0e-5,
-    obj_tol=1.0e-3,
-    grad_tol=1.0e-3,
-    max_iter=100,
-    max_al_iter=10,
-    ρ_init=1.0,
-    ρ_scale=10.0)
+solve!(prob)
 
 # ## solution
-x_sol, u_sol = nominal_trajectory(prob)
+x_sol, u_sol = get_trajectory(prob)
 
 # ## visuals
 plot(hcat(x_sol...)')
 plot(hcat(u_sol...)', linetype=:steppost)
+
+# ## benchmark allocations + timing
+info = @benchmark solve!($prob, x̄, ū) setup=(x̄=deepcopy(x̄), ū=deepcopy(ū))
+

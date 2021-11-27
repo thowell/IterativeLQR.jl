@@ -58,19 +58,16 @@ end
 
 function eval_con_jac!(jacx, jacu, cons::Constraints{T}, x, u, w) where T
     H = length(cons)
-    for (t, con) in enumerate(cons[1:H-1])
+    for (t, con) in enumerate(cons)
         con.nc == 0 && continue
         con.jacx(con.jacx_cache, x[t], u[t], w[t])
-        con.jacu(con.jacu_cache, x[t], u[t], w[t])
         @views jacx[t] .= con.jacx_cache
-        @views jacu[t] .= con.jacu_cache
         fill!(con.jacx_cache, 0.0) # TODO: confirm this is necessary
+        t == H && continue
+        con.jacu(con.jacu_cache, x[t], u[t], w[t])
+        @views jacu[t] .= con.jacu_cache
         fill!(con.jacu_cache, 0.0) # TODO: confirm this is necessary
     end
-    cons[H].nc == 0 && return
-    cons[H].jacx(cons[H].jacx_cache, x[H], u[H], w[H])
-    @views jacx[H] .= cons[H].jacx_cache
-    fill!(cons[H].jacx_cache, 0.0) # TODO: confirm this is necessary
 end
 
 """
@@ -96,17 +93,16 @@ function constraints!(c_data::ConstraintsData, x, u, w)
 end
 
 function constraint_violation(c_data::ConstraintsData; norm_type=Inf)
-    T = length(c_data.cons)
+    cons = c_data.cons
+    T = length(cons)
     c_max = 0.0
     for t = 1:T
-        c_viol = copy(c_data.c[t]) # TODO: may be unnecessary
-
-        # project inequality constraints
-        for i in c_data.cons[t].idx_ineq
-            c_viol[i] = max.(0.0, c_data.c[t][i])
+        nc = cons[t].nc 
+        for i = 1:nc 
+            cti = c_data.c[t][i]
+            (i in cons[t].idx_ineq) && (cti = max(0.0, cti))
+            c_max = max(c_max, cti)
         end
-
-        c_max = max(c_max, norm(c_viol, norm_type))
     end
     return c_max
 end

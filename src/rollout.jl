@@ -14,11 +14,16 @@ function rollout!(p_data::PolicyData, m_data::ModelData; α=1.0)
     k = p_data.k
 
     # initial state
-    x[1] = copy(x̄[1])
+    x[1] .= x̄[1]
 
     # rollout
     for (t, dyn) in enumerate(model)
-        u[t] .= ū[t] + K[t] * (x[t] - x̄[t]) + α * k[t]
+        # u[t] .= ū[t] + K[t] * (x[t] - x̄[t]) + α * k[t]
+        u[t] .= k[t] 
+        u[t] .*= α 
+        u[t] .+= ū[t] 
+        mul!(u[t], K[t], x[t], 1.0, 1.0) 
+        mul!(u[t], K[t], x̄[t], -1.0, 1.0)
         x[t+1] .= step!(dyn, x[t], u[t], w[t])
     end
 end
