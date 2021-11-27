@@ -29,7 +29,7 @@ using LinearAlgebra
 # horizon 
 T = 11 
 
-# acrobot 
+# particle 
 nx = 2
 nu = 1 
 
