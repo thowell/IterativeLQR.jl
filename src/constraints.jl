@@ -98,9 +98,9 @@ function constraint_violation(c_data::ConstraintsData; norm_type=Inf)
     c_max = 0.0
     for t = 1:T
         nc = cons[t].nc 
+        ineq = cons[t].idx_ineq
         for i = 1:nc 
-            cti = c_data.c[t][i]
-            (i in cons[t].idx_ineq) && (cti = max(0.0, cti))
+            cti = (i in ineq) ? max(0.0, c_data.c[t][i]) : abs(c_data.c[t][i])
             c_max = max(c_max, cti)
         end
     end
