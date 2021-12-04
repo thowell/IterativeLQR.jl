@@ -4,6 +4,7 @@ function ilqr_solve!(prob::ProblemData;
     grad_tol=1.0e-3,
     α_min=1.0e-5,
     linesearch=:armijo,
+    reset_cache=true,
     verbose=false)
 
     # printstyled("Iterative LQR\n",
@@ -15,6 +16,7 @@ function ilqr_solve!(prob::ProblemData;
     reset!(m_data.model_deriv)
     reset!(m_data.obj_deriv) 
 	s_data = prob.s_data
+    reset_cache && reset!(s_data)
 
 	objective!(s_data, m_data, mode=:nominal)
     derivatives!(m_data, mode=:nominal)
@@ -35,6 +37,7 @@ function ilqr_solve!(prob::ProblemData;
         grad_norm = norm(s_data.gradient, Inf)
 
         # info
+        s_data.iter[1] += 1
         verbose && println("     iter: $i
              cost: $(s_data.obj[1])
 			 grad_norm: $(grad_norm)
@@ -99,6 +102,9 @@ function constrained_ilqr_solve!(prob::ProblemData;
 	# verbose && printstyled("Iterative LQR\n",
 	# 	color=:red, bold=true)
 
+    # reset solver cache 
+    reset!(prob.s_data) 
+
     # reset duals 
     for (t, λ) in enumerate(prob.m_data.obj.λ)
         fill!(λ, 0.0)
@@ -119,6 +125,7 @@ function constrained_ilqr_solve!(prob::ProblemData;
 		    max_iter=max_iter,
             obj_tol=obj_tol,
 		    grad_tol=grad_tol,
+            reset_cache=false,
 		    verbose=verbose)
 
 		# update trajectories
@@ -145,16 +152,9 @@ function solve!(prob::ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwar
     iterative_lqr!(prob, args...; kwargs...)
 end
 
-# function solve!(prob::ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, x, u; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:Objective{T}}
-#     iterative_lqr!(prob, x, u; kwargs...)
-# end
-
 function solve!(prob::ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:AugmentedLagrangianCosts{T}}
     constrained_ilqr_solve!(prob, args...; kwargs...)
 end
 
-# function solve!(prob::ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, x, u; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:AugmentedLagrangianCosts{T}}
-#     constrained_iterative_lqr!(prob, x, u; kwargs...)
-# end
 
 

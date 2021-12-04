@@ -193,7 +193,9 @@ struct SolverData{T}
     α::Vector{T}                # step length
     status::Vector{Bool}        # solver status
 
-	cache::Dict{Symbol,Vector{T}}       # solver stats
+    iter::Vector{Int}
+
+	cache::Dict{Symbol,Vector{T}}  # solver stats
 end
 
 function solver_data(model::Model{T}; max_cache=1000) where T
@@ -216,11 +218,23 @@ function solver_data(model::Model{T}; max_cache=1000) where T
     α = [1.0]
     gradient = zeros(num_var(model))
 	cache = Dict(:obj => zeros(max_cache), 
-                 :gradient => zeros(max_cache), 
+                 :grad => zeros(max_cache), 
                  :c_max => zeros(max_cache), 
                  :α => zeros(max_cache))
 
-    SolverData(obj, gradient, c_max, idx_x, idx_u, α, [false], cache)
+    SolverData(obj, gradient, c_max, idx_x, idx_u, α, [false], [0], cache)
+end
+
+function reset!(data::SolverData) 
+    fill!(data.obj, 0.0) 
+    fill!(data.gradient, 0.0)
+    fill!(data.c_max, 0.0) 
+    fill!(data.cache[:obj], 0.0) 
+    fill!(data.cache[:grad], 0.0) 
+    fill!(data.cache[:c_max], 0.0) 
+    fill!(data.cache[:α], 0.0) 
+    data.status[1] = false
+    data.iter[1] = 0
 end
 
 # TODO: fix iter
