@@ -26,7 +26,8 @@ function ilqr_solve!(prob::ProblemData;
     for i = 1:max_iter
         forward_pass!(p_data, m_data, s_data,
             α_min=α_min,
-            linesearch=linesearch)
+            linesearch=linesearch,
+            verbose=verbose)
         if linesearch != :none
             derivatives!(m_data, mode=:nominal)
             backward_pass!(p_data, m_data, mode=:nominal)

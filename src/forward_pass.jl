@@ -1,9 +1,10 @@
 function forward_pass!(p_data::PolicyData, m_data::ModelData, s_data::SolverData;
-    linesearch = :armijo,
-    α_min = 1.0e-5,
-    c1 = 1.0e-4,
-    c2 = 0.9,
-    max_iter = 25)
+    linesearch=:armijo,
+    α_min=1.0e-5,
+    c1=1.0e-4,
+    c2=0.9,
+    max_iter=25,
+    verbose=false)
 
     # reset solver status
     s_data.status[1] = false
@@ -25,7 +26,7 @@ function forward_pass!(p_data::PolicyData, m_data::ModelData, s_data::SolverData
     s_data.α[1] = 1.0
     iter = 1
     while s_data.α[1] >= α_min
-        iter > max_iter && (@warn "forward pass failure", break)
+        iter > max_iter && (verbose && (@warn "forward pass failure"), break)
 
         J = Inf
         #TODO: remove try-catch
@@ -33,8 +34,10 @@ function forward_pass!(p_data::PolicyData, m_data::ModelData, s_data::SolverData
             rollout!(p_data, m_data, α=s_data.α[1])
             J = objective!(s_data, m_data, mode=:current)[1]
         catch
-            @warn "rollout failure"
-            @show norm(s_data.gradient)
+            if verbose
+                @warn "rollout failure"
+                @show norm(s_data.gradient)
+            end
         end
         if (J <= J_prev + c1 * s_data.α[1] * delta_grad_product)
             # update nominal
@@ -47,6 +50,6 @@ function forward_pass!(p_data::PolicyData, m_data::ModelData, s_data::SolverData
             iter += 1
         end
     end
-    s_data.α[1] < α_min && (@warn "line search failure")
+    s_data.α[1] < α_min && (verbose && (@warn "line search failure"))
 end
 
