@@ -10,6 +10,7 @@
     ρ_init::T=1.0
     ρ_scale::T=10.0
     ρ_max::T=1.0e8
+    reset_cache::Bool=false
     verbose=true
 end
 

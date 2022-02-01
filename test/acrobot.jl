@@ -71,7 +71,7 @@
     end
 
     # ## model
-    dyn = Dynamics(midpoint_explicit, nx, nu, nw)
+    dyn = Dynamics(midpoint_explicit, nx, nu, nw=nw)
     model = [dyn for t = 1:T-1] 
 
     # ## initialization
@@ -84,8 +84,8 @@
     # ## objective 
     ot = (x, u, w) -> 0.1 * dot(x[3:4], x[3:4]) + 0.1 * dot(u, u)
     oT = (x, u, w) -> 0.1 * dot(x[3:4], x[3:4])
-    ct = Cost(ot, nx, nu, nw)
-    cT = Cost(oT, nx, 0, nw)
+    ct = Cost(ot, nx, nu, nw=nw)
+    cT = Cost(oT, nx, 0, nw=nw)
     obj = [[ct for t = 1:T-1]..., cT]
 
     # ## constraints

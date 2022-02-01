@@ -18,7 +18,7 @@
         x + h * pendulum(x, u, w)
     end
 
-    dyn = Dynamics(euler_explicit, nx, nu, nw)
+    dyn = Dynamics(euler_explicit, nx, nu, nw=nw)
     model = [dyn for t = 1:T-1]
 
     x1 = ones(nx) 

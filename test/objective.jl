@@ -5,8 +5,8 @@
     nw = 0
     ot = (x, u, w) -> dot(x, x) + 0.1 * dot(u, u)
     oT = (x, u, w) -> 10.0 * dot(x, x)
-    ct = Cost(ot, nx, nu, nw)
-    cT = Cost(oT, nx, 0, nw)
+    ct = Cost(ot, nx, nu, nw=nw)
+    cT = Cost(oT, nx, 0, nw=nw)
     obj = [[ct for t = 1:T-1]..., cT]
 
     J = [0.0]
