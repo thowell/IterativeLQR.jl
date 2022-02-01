@@ -30,7 +30,7 @@ export Dynamics
 # solver 
 export rollout, 
     step!,
-    solver, 
+    solver, Options,
     initialize_controls!, initialize_states!, 
     solve!,
     get_trajectory
