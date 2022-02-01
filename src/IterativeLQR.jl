@@ -10,6 +10,7 @@ include("objective.jl")
 include("dynamics.jl")
 include("constraints.jl")
 include("data.jl")
+include("solver.jl")
 include("rollout.jl")
 include("augmented_lagrangian.jl")
 include("derivatives.jl")
@@ -29,7 +30,7 @@ export Dynamics
 # solver 
 export rollout, 
     step!,
-    problem_data, 
+    solver, 
     initialize_controls!, initialize_states!, 
     solve!,
     get_trajectory

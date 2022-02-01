@@ -45,7 +45,7 @@ initialize_states!(prob, x̄)
 @benchmark initialize_states!($prob, $x̄)
 @code_warntype initialize_states!(prob, x̄)
 
-function _forward_pass!(prob::ProblemData, x, u) 
+function _forward_pass!(prob::Solver, x, u) 
     initialize_controls!(prob, u)
     initialize_states!(prob, x)
 

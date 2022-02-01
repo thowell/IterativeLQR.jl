@@ -45,12 +45,12 @@ conT = Constraint(goal, nx, 0)
 cons = [[cont for t = 1:T-1]..., conT] 
 
 # ## problem
-prob = problem_data(model, obj, cons)
+prob = solver(model, obj, cons)
 initialize_controls!(prob, ū)
 initialize_states!(prob, x̄)
 
 # ## solve
-solve!(prob, verbose=true)
+solve!(prob)
 
 # ## solution
 x_sol, u_sol = get_trajectory(prob)

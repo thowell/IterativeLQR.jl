@@ -14,7 +14,7 @@ struct Cost{T}
     hessux_cache::Matrix{T}
 end
 
-function Cost(f::Function, nx::Int, nu::Int, nw::Int=0)
+function Cost(f::Function, nx::Int, nu::Int; nw::Int=0)
     #TODO: option to load/save methods
     @variables x[1:nx], u[1:nu], w[1:nw]
     

@@ -1,4 +1,4 @@
-function ilqr_solve!(prob::ProblemData;
+function ilqr_solve!(prob::Solver;
     max_iter=10,
     obj_tol=1.0e-3,
     grad_tol=1.0e-3,
@@ -54,7 +54,7 @@ function ilqr_solve!(prob::ProblemData;
     return nothing
 end
 
-function ilqr_solve!(prob::ProblemData, x, u; kwargs...)
+function ilqr_solve!(prob::Solver, x, u; kwargs...)
     initialize_controls!(prob, u) 
     initialize_states!(prob, x) 
     ilqr_solve!(prob; kwargs...)
@@ -86,7 +86,7 @@ end
 """
     augmented Lagrangian solve
 """
-function constrained_ilqr_solve!(prob::ProblemData;
+function constrained_ilqr_solve!(prob::Solver;
     linesearch=:armijo,
     max_iter=10,
 	max_al_iter=10,
@@ -143,17 +143,17 @@ function constrained_ilqr_solve!(prob::ProblemData;
     return nothing
 end
 
-function constrained_ilqr_solve!(prob::ProblemData, x, u; kwargs...)
+function constrained_ilqr_solve!(prob::Solver, x, u; kwargs...)
     initialize_controls!(prob, u) 
     initialize_states!(prob, x) 
     constrained_ilqr_solve!(prob; kwargs...)
 end
 
-function solve!(prob::ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:Objective{T}}
+function solve!(prob::Solver{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:Objective{T}}
     iterative_lqr!(prob, args...; kwargs...)
 end
 
-function solve!(prob::ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:AugmentedLagrangianCosts{T}}
+function solve!(prob::Solver{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:AugmentedLagrangianCosts{T}}
     constrained_ilqr_solve!(prob, args...; kwargs...)
 end
 
