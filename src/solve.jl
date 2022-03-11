@@ -150,7 +150,7 @@ function constrained_ilqr_solve!(prob::ProblemData, x, u; kwargs...)
 end
 
 function solve!(prob::ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:Objective{T}}
-    iterative_lqr!(prob, args...; kwargs...)
+    iqr_solve!(prob, args...; kwargs...)
 end
 
 function solve!(prob::ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:AugmentedLagrangianCosts{T}}

@@ -89,4 +89,5 @@ plot(hcat(x_sol...)')
 plot(hcat(u_sol[1:end-1]...)', linetype=:steppost)
 
 # ## benchmark allocations + timing
+using BenchmarkTools
 info = @benchmark solve!($prob, x̄, ū) setup=(x̄=deepcopy(x̄), ū=deepcopy(ū))
