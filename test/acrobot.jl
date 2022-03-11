@@ -71,7 +71,7 @@
     end
 
     # ## model
-    dyn = Dynamics(midpoint_explicit, nx, nu, nw)
+    dyn = Dynamics(midpoint_explicit, nx, nu, nw=nw)
     model = [dyn for t = 1:T-1] 
 
     # ## initialization
@@ -84,8 +84,8 @@
     # ## objective 
     ot = (x, u, w) -> 0.1 * dot(x[3:4], x[3:4]) + 0.1 * dot(u, u)
     oT = (x, u, w) -> 0.1 * dot(x[3:4], x[3:4])
-    ct = Cost(ot, nx, nu, nw)
-    cT = Cost(oT, nx, 0, nw)
+    ct = Cost(ot, nx, nu, nw=nw)
+    cT = Cost(oT, nx, 0, nw=nw)
     obj = [[ct for t = 1:T-1]..., cT]
 
     # ## constraints
@@ -96,13 +96,7 @@
     cons = [[cont for t = 1:T-1]..., conT] 
 
     # ## problem
-    prob = problem_data(model, obj, cons)
-    initialize_controls!(prob, ū) 
-    initialize_states!(prob, x̄)
-
-    # ## solve
-    solve!(prob, 
-        verbose=false,
+    opts = Options(verbose=false,
         linesearch=:armijo,
         α_min=1.0e-5,
         obj_tol=1.0e-3,
@@ -111,11 +105,17 @@
         max_al_iter=10,
         ρ_init=1.0,
         ρ_scale=10.0)
+    prob = solver(model, obj, cons, opts=opts)
+    initialize_controls!(prob, ū) 
+    initialize_states!(prob, x̄)
+
+    # ## solve
+    solve!(prob)
 
     # ## solution
     x_sol, u_sol = get_trajectory(prob)
 
-    @test norm(x_sol[T] - xT, Inf) < 1.0e-3
+    @test norm(x_sol[T] - xT, Inf) < opts.con_tol
 
     # ## allocations
     # info = @benchmark solve!($prob, a, b) setup=(a=deepcopy(x̄), b=deepcopy(ū))

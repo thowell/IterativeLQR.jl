@@ -1,6 +1,7 @@
+# IterativeLQR.jl
 [![CI](https://github.com/thowell/IterativeLQR.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/thowell/IterativeLQR.jl/actions/workflows/CI.yml)
 [![codecov](https://codecov.io/gh/thowell/IterativeLQR.jl/branch/main/graph/badge.svg?token=FGM33O1K1E)](https://codecov.io/gh/thowell/IterativeLQR.jl)
-# IterativeLQR.jl
+
 A Julia package for solving constrained trajectory optimization problems with iterative LQR (iLQR). 
 
 ```
@@ -64,12 +65,12 @@ conT = Constraint(goal, nx, 0)
 cons = [[cont for t = 1:T-1]..., conT] 
 
 # problem
-prob = problem_data(model, obj, cons)
+prob = solver(model, obj, cons)
 initialize_controls!(prob, ū)
 initialize_states!(prob, x̄)
 
 # solve
-solve!(prob, verbose=true)
+solve!(prob)
 
 # solution
 x_sol, u_sol = get_trajectory(prob)

@@ -282,72 +282,9 @@ function Δz!(m_data::ModelData, p_data::PolicyData, s_data::SolverData)
     end
 end
 
-"""
-    Problem Data
-"""
-mutable struct ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
-	p_data::PolicyData{N,M,NN,MM,MN,NNN,MNN}
-	m_data::ModelData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
-	s_data::SolverData{T}
-end
-
-function problem_data(model::Model, obj::Objective; 
-    w=[[zeros(d.nw) for d in model]..., zeros(0)])
-
-	# allocate policy data
-    p_data = policy_data(model)
-
-    # allocate model data
-    m_data = model_data(model, obj, w=w)
-
-    # allocate solver data
-    s_data = solver_data(model)
-
-	ProblemData(p_data, m_data, s_data)
-end
-
 function trajectories(m_data::ModelData; mode=:nominal) 
     x = mode == :nominal ? m_data.x̄ : m_data.x 
     u = mode == :nominal ? m_data.ū : m_data.u 
     w = m_data.w
     return x, u, w 
-end
-
-function get_trajectory(prob::ProblemData)
-	return prob.m_data.x̄, prob.m_data.ū[1:end-1]
-end
-
-function current_trajectory(prob::ProblemData)
-	return prob.m_data.x, prob.m_data.u[1:end-1]
-end
-
-#TODO: constraints
-function problem_data(model::Model, obj::Objective, cons::Constraints,
-    w=[[zeros(d.nw) for d in model]..., zeros(0)])
-
-	# augmented Lagrangian
-	obj_al = augmented_lagrangian(model, obj, cons)
-
-    # allocate policy data  
-    p_data = policy_data(model)
-
-    # allocate model data
-    m_data = model_data(model, obj_al, w=w)
-
-    # allocate solver data
-    s_data = solver_data(model)
-
-	ProblemData(p_data, m_data, s_data)
-end
-
-function initialize_controls!(prob::ProblemData, u) 
-    for (t, ut) in enumerate(u) 
-        prob.m_data.ū[t] .= ut
-    end 
-end
-
-function initialize_states!(prob::ProblemData, x) 
-    for (t, xt) in enumerate(x)
-        prob.m_data.x̄[t] .= xt
-    end
 end

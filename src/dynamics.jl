@@ -13,7 +13,7 @@ end
 
 Model{T} = Vector{Dynamics{T}} where T
 
-function Dynamics(f::Function, nx::Int, nu::Int, nw::Int=0)
+function Dynamics(f::Function, nx::Int, nu::Int; nw::Int=0)
     #TODO: option to load/save methods
     @variables x[1:nx], u[1:nu], w[1:nw] 
     y = f(x, u, w) 

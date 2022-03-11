@@ -1,34 +1,27 @@
-function ilqr_solve!(prob::ProblemData;
-    max_iter=10,
-    obj_tol=1.0e-3,
-    grad_tol=1.0e-3,
-    α_min=1.0e-5,
-    linesearch=:armijo,
-    reset_cache=true,
-    verbose=false)
+function ilqr_solve!(solver::Solver)
 
     # printstyled("Iterative LQR\n",
 	# 	color=:red, bold=true)
 
 	# data
-	p_data = prob.p_data   
-    m_data = prob.m_data
+	p_data = solver.p_data   
+    m_data = solver.m_data
     reset!(m_data.model_deriv)
     reset!(m_data.obj_deriv) 
-	s_data = prob.s_data
-    reset_cache && reset!(s_data)
+	s_data = solver.s_data
+    solver.options.reset_cache && reset!(s_data)
 
 	objective!(s_data, m_data, mode=:nominal)
     derivatives!(m_data, mode=:nominal)
     backward_pass!(p_data, m_data, mode=:nominal)
 
     obj_prev = s_data.obj[1]
-    for i = 1:max_iter
+    for i = 1:solver.options.max_iter
         forward_pass!(p_data, m_data, s_data,
-            α_min=α_min,
-            linesearch=linesearch,
-            verbose=verbose)
-        if linesearch != :none
+            α_min=solver.options.α_min,
+            linesearch=solver.options.linesearch,
+            verbose=solver.options.verbose)
+        if solver.options.linesearch != :none
             derivatives!(m_data, mode=:nominal)
             backward_pass!(p_data, m_data, mode=:nominal)
             lagrangian_gradient!(s_data, p_data, m_data)
@@ -39,25 +32,25 @@ function ilqr_solve!(prob::ProblemData;
 
         # info
         s_data.iter[1] += 1
-        verbose && println("     iter: $i
+        solver.options.verbose && println("     iter: $i
              cost: $(s_data.obj[1])
 			 grad_norm: $(grad_norm)
 			 c_max: $(s_data.c_max[1])
 			 α: $(s_data.α[1])")
 
         # check convergence
-		grad_norm < grad_tol && break
-        abs(s_data.obj[1] - obj_prev) < obj_tol ? break : (obj_prev = s_data.obj[1])
+		grad_norm < solver.options.grad_tol && break
+        abs(s_data.obj[1] - obj_prev) < solver.options.obj_tol ? break : (obj_prev = s_data.obj[1])
         !s_data.status[1] && break
     end
 
     return nothing
 end
 
-function ilqr_solve!(prob::ProblemData, x, u; kwargs...)
-    initialize_controls!(prob, u) 
-    initialize_states!(prob, x) 
-    ilqr_solve!(prob; kwargs...)
+function ilqr_solve!(solver::Solver, x, u; kwargs...)
+    initialize_controls!(solver, u) 
+    initialize_states!(solver, x) 
+    ilqr_solve!(solver; kwargs...)
 end
 
 
@@ -86,75 +79,56 @@ end
 """
     augmented Lagrangian solve
 """
-function constrained_ilqr_solve!(prob::ProblemData;
-    linesearch=:armijo,
-    max_iter=10,
-	max_al_iter=10,
-    α_min=1.0e-5,
-    obj_tol=1.0e-3,
-    grad_tol=1.0e-3,
-	con_tol=1.0e-3,
-	con_norm_type=Inf,
-	ρ_init=1.0,
-	ρ_scale=10.0,
-	ρ_max=1.0e8,
-    verbose=false)
+function constrained_ilqr_solve!(solver::Solver)
 
 	# verbose && printstyled("Iterative LQR\n",
 	# 	color=:red, bold=true)
 
     # reset solver cache 
-    reset!(prob.s_data) 
+    reset!(solver.s_data) 
 
     # reset duals 
-    for (t, λ) in enumerate(prob.m_data.obj.λ)
+    for (t, λ) in enumerate(solver.m_data.obj.λ)
         fill!(λ, 0.0)
 	end
 
 	# initialize penalty
-	for (t, ρ) in enumerate(prob.m_data.obj.ρ)
-        fill!(ρ, ρ_init)
+	for (t, ρ) in enumerate(solver.m_data.obj.ρ)
+        fill!(ρ, solver.options.ρ_init)
 	end
 
-	for i = 1:max_al_iter
-		verbose && println("  al iter: $i")
+	for i = 1:solver.options.max_al_iter
+		solver.options.verbose && println("  al iter: $i")
 
 		# primal minimization
-		ilqr_solve!(prob,
-            linesearch=linesearch,
-            α_min=α_min,
-		    max_iter=max_iter,
-            obj_tol=obj_tol,
-		    grad_tol=grad_tol,
-            reset_cache=false,
-		    verbose=verbose)
+		ilqr_solve!(solver)
 
 		# update trajectories
-		objective!(prob.s_data, prob.m_data, mode=:nominal)
+		objective!(solver.s_data, solver.m_data, mode=:nominal)
 		
         # constraint violation
-		prob.s_data.c_max[1] <= con_tol && break
+		solver.s_data.c_max[1] <= solver.options.con_tol && break
 
         # dual ascent
-		augmented_lagrangian_update!(prob.m_data.obj,
-			s=ρ_scale, max_penalty=ρ_max)
+		augmented_lagrangian_update!(solver.m_data.obj,
+			s=solver.options.ρ_scale, max_penalty=solver.options.ρ_max)
 	end
 
     return nothing
 end
 
-function constrained_ilqr_solve!(prob::ProblemData, x, u; kwargs...)
-    initialize_controls!(prob, u) 
-    initialize_states!(prob, x) 
-    constrained_ilqr_solve!(prob; kwargs...)
+function constrained_ilqr_solve!(solver::Solver, x, u; kwargs...)
+    initialize_controls!(solver, u) 
+    initialize_states!(solver, x) 
+    constrained_ilqr_solve!(solver; kwargs...)
 end
 
-function solve!(prob::ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:Objective{T}}
-    iqr_solve!(prob, args...; kwargs...)
+function solve!(solver::Solver{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:Objective{T}}
+    iterative_lqr!(solver, args...; kwargs...)
 end
 
-function solve!(prob::ProblemData{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:AugmentedLagrangianCosts{T}}
-    constrained_ilqr_solve!(prob, args...; kwargs...)
+function solve!(solver::Solver{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:AugmentedLagrangianCosts{T}}
+    constrained_ilqr_solve!(solver, args...; kwargs...)
 end
 
 
