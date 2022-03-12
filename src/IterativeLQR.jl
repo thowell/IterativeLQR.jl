@@ -3,13 +3,13 @@ module IterativeLQR
 using LinearAlgebra 
 using Symbolics 
 using Scratch 
-using Parameters 
 using JLD2
 
 include("objective.jl")
 include("dynamics.jl")
 include("constraints.jl")
 include("data.jl")
+include("options.jl")
 include("solver.jl")
 include("rollout.jl")
 include("augmented_lagrangian.jl")

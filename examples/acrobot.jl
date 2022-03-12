@@ -42,6 +42,15 @@ function acrobot(x, u, w)
        return [a b; b c]
     end
 
+    function Minv(x, w) 
+        m = M(x, w) 
+        a = m[1, 1] 
+        b = m[1, 2] 
+        c = m[2, 1] 
+        d = m[2, 2]
+        1.0 / (a * d - b * c) * [d -b;-c a]
+    end
+
     function τ(x, w)
         a = (-1.0 * mass1 * gravity * lengthcom1 * sin(x[1])
             - mass2 * gravity * (length1 * sin(x[1])
@@ -68,7 +77,7 @@ function acrobot(x, u, w)
     q = view(x, 1:2)
     v = view(x, 3:4)
 
-    qdd = M(q, w) \ (-1.0 * C(x, w) * v
+    qdd = Minv(q, w) * (-1.0 * C(x, w) * v
             + τ(q, w) + B(q, w) * u[1] - [friction1; friction2] .* v)
 
     return [x[3]; x[4]; qdd[1]; qdd[2]]
