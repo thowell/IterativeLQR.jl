@@ -21,9 +21,9 @@ lagrangian_gradient!(prob.solver_data, prob.policy, prob.problem)
 @benchmark lagrangian_gradient!($prob.solver_data, $prob.policy, $prob.problem)
 @code_warntype lagrangian_gradient!(prob.solver_data, prob.policy, prob.problem)
 
-IterativeLQR.Δz!(prob.problem, prob.policy, prob.solver_data)
-@benchmark IterativeLQR.Δz!($prob.problem, $prob.policy, $prob.solver_data)
-@code_warntype IterativeLQR.Δz!(prob.problem, prob.policy, prob.solver_data)
+IterativeLQR.trajectory_sensitivities(prob.problem, prob.policy, prob.solver_data)
+@benchmark IterativeLQR.trajectory_sensitivities($prob.problem, $prob.policy, $prob.solver_data)
+@code_warntype IterativeLQR.trajectory_sensitivities(prob.problem, prob.policy, prob.solver_data)
 
 rollout!(prob.policy, prob.problem, α=prob.solver_data.α[1])
 @benchmark rollout!($prob.policy, $prob.problem, α=$prob.solver_data.α[1])
