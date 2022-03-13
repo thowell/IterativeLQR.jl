@@ -28,13 +28,13 @@
     @test norm(cT0 - x[T]) < 1.0e-8
 
     cc = [[zeros(nct) for t = 1:T-1]..., zeros(ncT)]
-    IterativeLQR.eval_con!(cc, cons, x, u, w)
+    IterativeLQR.constraints!(cc, cons, x, u, w)
 
     @test norm(vcat(cc...) - vcat([ct(x[t], u[t], w[t]) for t = 1:T-1]..., cT(x[T], u[T], w[T]))) < 1.0e-8
     
     jx = [[zeros(nct, nx) for t = 1:T-1]..., zeros(ncT, nx)]
     ju = [[zeros(nct, nu) for t = 1:T-1]..., zeros(ncT, nu)]
-    IterativeLQR.eval_con_jac!(jx, ju, cons, x, u, w)
+    IterativeLQR.jacobian!(jx, ju, cons, x, u, w)
 
     for t = 1:T-1
         @test norm(jx[t] - ForwardDiff.jacobian(x -> ct(x, u[t], w[t]), x[t])) < 1.0e-8

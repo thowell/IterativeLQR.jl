@@ -2,9 +2,9 @@
     Problem Data
 """
 mutable struct Solver{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
-	p_data::PolicyData{N,M,NN,MM,MN,NNN,MNN}
-	m_data::ModelData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
-	s_data::SolverData{T}
+    problem::ProblemData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
+	policy::PolicyData{N,M,NN,MM,MN,NNN,MNN}
+	data::SolverData{T}
     options::Options{T}
 end
 
@@ -13,24 +13,24 @@ function solver(model::Model{T}, obj::Objective{T};
     opts=Options{T}()) where T
 
 	# allocate policy data
-    p_data = policy_data(model)
+    policy = policy_data(model)
 
-    # allocate model data
-    m_data = model_data(model, obj, w=w)
+    # allocate problem data
+    problem = problem_data(model, obj, w=w)
 
     # allocate solver data
-    s_data = solver_data(model)
+    data = solver_data(model)
 
-	Solver(p_data, m_data, s_data, options)
+	Solver(problem, policy, data, options)
 end
 
 
-function get_trajectory(prob::Solver)
-	return prob.m_data.x̄, prob.m_data.ū[1:end-1]
+function get_trajectory(solver::Solver)
+	return solver.problem.x̄, solver.problem.ū[1:end-1]
 end
 
-function current_trajectory(prob::Solver)
-	return prob.m_data.x, prob.m_data.u[1:end-1]
+function current_trajectory(solver::Solver)
+	return solver.problem.x, solver.problem.u[1:end-1]
 end
 
 function solver(model::Model{T}, obj::Objective{T}, cons::Constraints{T};
@@ -41,25 +41,25 @@ function solver(model::Model{T}, obj::Objective{T}, cons::Constraints{T};
 	obj_al = augmented_lagrangian(model, obj, cons)
 
     # allocate policy data  
-    p_data = policy_data(model)
+    policy = policy_data(model)
 
     # allocate model data
-    m_data = model_data(model, obj_al, w=w)
+    problem = problem_data(model, obj_al, w=w)
 
     # allocate solver data
-    s_data = solver_data(model)
+    data = solver_data(model)
 
-	Solver(p_data, m_data, s_data, opts)
+	Solver(problem, policy, data, opts)
 end
 
-function initialize_controls!(prob::Solver, u) 
+function initialize_controls!(solver::Solver, u) 
     for (t, ut) in enumerate(u) 
-        prob.m_data.ū[t] .= ut
+        solver.problem.ū[t] .= ut
     end 
 end
 
-function initialize_states!(prob::Solver, x) 
+function initialize_states!(solver::Solver, x) 
     for (t, xt) in enumerate(x)
-        prob.m_data.x̄[t] .= xt
+        solver.problem.x̄[t] .= xt
     end
 end

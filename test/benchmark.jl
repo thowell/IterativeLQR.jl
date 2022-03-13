@@ -3,39 +3,39 @@
 using BenchmarkTools
 using InteractiveUtils
 
-objective!(prob.s_data, prob.m_data, mode=:nominal)
-@benchmark objective!($prob.s_data, $prob.m_data, mode=:nominal)
-@code_warntype objective!(prob.s_data, prob.m_data, mode=:nominal)
+cost!(prob.solver_data, prob.problem, mode=:nominal)
+@benchmark cost!($prob.solver_data, $prob.problem, mode=:nominal)
+@code_warntype cost!(prob.solver_data, prob.problem, mode=:nominal)
 
-derivatives!(prob.m_data, mode=:nominal)
-@benchmark derivatives!($prob.m_data, mode=:nominal)
-@code_warntype derivatives!(prob.m_data, mode=:nominal)
+gradients!(prob.problem, mode=:nominal)
+@benchmark gradients!($prob.problem, mode=:nominal)
+@code_warntype gradients!(prob.problem, mode=:nominal)
 
 mode = :nominal
-IterativeLQR.backward_pass!(prob.p_data, prob.m_data, mode=mode)
-@benchmark IterativeLQR.backward_pass!($prob.p_data, $prob.m_data, mode=:nominal)# setup=(mode=:nominal)
-@benchmark IterativeLQR.backward_pass!($prob.p_data, $prob.m_data, mode=:cand)# setup=(mode=:nominal)
-@code_warntype IterativeLQR.backward_pass!(prob.p_data, prob.m_data, mode=mode)
+IterativeLQR.backward_pass!(prob.policy, prob.problem, mode=mode)
+@benchmark IterativeLQR.backward_pass!($prob.policy, $prob.problem, mode=:nominal)# setup=(mode=:nominal)
+@benchmark IterativeLQR.backward_pass!($prob.policy, $prob.problem, mode=:cand)# setup=(mode=:nominal)
+@code_warntype IterativeLQR.backward_pass!(prob.policy, prob.problem, mode=mode)
 
-lagrangian_gradient!(prob.s_data, prob.p_data, prob.m_data)
-@benchmark lagrangian_gradient!($prob.s_data, $prob.p_data, $prob.m_data)
-@code_warntype lagrangian_gradient!(prob.s_data, prob.p_data, prob.m_data)
+lagrangian_gradient!(prob.solver_data, prob.policy, prob.problem)
+@benchmark lagrangian_gradient!($prob.solver_data, $prob.policy, $prob.problem)
+@code_warntype lagrangian_gradient!(prob.solver_data, prob.policy, prob.problem)
 
-IterativeLQR.Δz!(prob.m_data, prob.p_data, prob.s_data)
-@benchmark IterativeLQR.Δz!($prob.m_data, $prob.p_data, $prob.s_data)
-@code_warntype IterativeLQR.Δz!(prob.m_data, prob.p_data, prob.s_data)
+IterativeLQR.Δz!(prob.problem, prob.policy, prob.solver_data)
+@benchmark IterativeLQR.Δz!($prob.problem, $prob.policy, $prob.solver_data)
+@code_warntype IterativeLQR.Δz!(prob.problem, prob.policy, prob.solver_data)
 
-rollout!(prob.p_data, prob.m_data, α=prob.s_data.α[1])
-@benchmark rollout!($prob.p_data, $prob.m_data, α=$prob.s_data.α[1])
-@code_warntype rollout!(prob.p_data, prob.m_data, α=prob.s_data.α[1])
+rollout!(prob.policy, prob.problem, α=prob.solver_data.α[1])
+@benchmark rollout!($prob.policy, $prob.problem, α=$prob.solver_data.α[1])
+@code_warntype rollout!(prob.policy, prob.problem, α=prob.solver_data.α[1])
 
-augmented_lagrangian_update!(prob.m_data.obj)
-@benchmark augmented_lagrangian_update!($prob.m_data.obj)
-@code_warntype augmented_lagrangian_update!(prob.m_data.obj)
+augmented_lagrangian_update!(prob.problem.obj)
+@benchmark augmented_lagrangian_update!($prob.problem.obj)
+@code_warntype augmented_lagrangian_update!(prob.problem.obj)
 
-constraint_violation(prob.m_data.obj.c_data)
-@benchmark constraint_violation($prob.m_data.obj.c_data)
-@code_warntype constraint_violation(prob.m_data.obj.c_data)
+constraint_violation(prob.problem.obj.constraint_data)
+@benchmark constraint_violation($prob.problem.obj.constraint_data)
+@code_warntype constraint_violation(prob.problem.obj.constraint_data)
 
 initialize_controls!(prob, ū)
 @benchmark initialize_controls!($prob, $ū)
@@ -49,7 +49,7 @@ function _forward_pass!(prob::Solver, x, u)
     initialize_controls!(prob, u)
     initialize_states!(prob, x)
 
-    forward_pass!(prob.p_data, prob.m_data, prob.s_data,
+    forward_pass!(prob.policy, prob.problem, prob.solver_data,
         α_min = 1.0e-5,
         linesearch = :armijo)
 end
@@ -66,7 +66,7 @@ using BenchmarkTools
 @benchmark $A .= $(Diagonal(b .* a))
 
 t = 1
-a = prob.m_data.obj.ρ[t]
-b = prob.m_data.obj.a[t]
-c = prob.m_data.obj.Iρ[t]
+a = prob.problem.obj.ρ[t]
+b = prob.problem.obj.a[t]
+c = prob.problem.obj.Iρ[t]
 @benchmark $c .= $(Diagonal(a .* b))

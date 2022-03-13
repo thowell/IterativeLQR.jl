@@ -1,6 +1,7 @@
 """
     Model Data
 """
+
 struct ModelData{T,X,U,W}
     dynamics::Vector{Dynamics{T}}
     fx::Vector{X}
@@ -8,11 +9,11 @@ struct ModelData{T,X,U,W}
 	fw::Vector{W}
 end
 
-function model_data(dynamics::Vector{Dynamics{T}}) where T
-	fx = [zeros(d.ny, d.nx) for d in dynamics]
-    fu = [zeros(d.ny, d.nu) for d in dynamics]
-	fw = [zeros(d.ny, d.nw) for d in dynamics]
-    ModelData(dynamics, fx, fu, fw)
+function model_data(model::Model)
+	fx = [zeros(d.ny, d.nx) for d in model]
+    fu = [zeros(d.ny, d.nu) for d in model]
+	fw = [zeros(d.ny, d.nw) for d in model]
+    ModelData(model, fx, fu, fw)
 end
 
 function reset!(data::ModelData) 

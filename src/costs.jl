@@ -42,7 +42,7 @@ end
 
 Objective{T} = Vector{Cost{T}} where T
 
-function objective(obj::Objective, x, u, w) 
+function cost(obj::Objective, x, u, w) 
     J = 0.0
     for (t, cost) in enumerate(obj)
         cost.val(cost.val_cache, x[t], u[t], w[t])
@@ -51,7 +51,7 @@ function objective(obj::Objective, x, u, w)
     return J 
 end
 
-function objective_gradient!(gradx, gradu, obj::Objective, x, u, w)
+function cost_gradient!(gradx, gradu, obj::Objective, x, u, w)
     T = length(obj)
     for (t, cost) in enumerate(obj)
         cost.gradx(cost.gradx_cache, x[t], u[t], w[t])
@@ -64,7 +64,7 @@ function objective_gradient!(gradx, gradu, obj::Objective, x, u, w)
     end
 end
 
-function objective_hessian!(hessxx, hessuu, hessux, obj::Objective, x, u, w)
+function cost_hessian!(hessxx, hessuu, hessux, obj::Objective, x, u, w)
     T = length(obj) 
     for (t, cost) in enumerate(obj)
         cost.hessxx(cost.hessxx_cache, x[t], u[t], w[t])

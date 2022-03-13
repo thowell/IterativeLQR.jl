@@ -1,4 +1,4 @@
-function forward_pass!(p_data::PolicyData, m_data::ModelData, s_data::SolverData;
+function forward_pass!(policy::PolicyData, problem::ProblemData, solver_data::SolverData;
     linesearch=:armijo,
     α_min=1.0e-5,
     c1=1.0e-4,
@@ -7,49 +7,49 @@ function forward_pass!(p_data::PolicyData, m_data::ModelData, s_data::SolverData
     verbose=false)
 
     # reset solver status
-    s_data.status[1] = false
+    solver_data.status[1] = false
 
     # previous cost
-    J_prev = s_data.obj[1]
+    J_prev = solver_data.obj[1]
 
     # gradient of Lagrangian
-    lagrangian_gradient!(s_data, p_data, m_data)
+    lagrangian_gradient!(solver_data, policy, problem)
 
     if linesearch == :armijo
-        Δz!(m_data, p_data, s_data)
-        delta_grad_product = s_data.gradient' * m_data.z
+        Δz!(problem, policy, solver_data)
+        delta_grad_product = solver_data.gradient' * problem.z
     else
         delta_grad_product = 0.0
     end
 
     # line search with rollout
-    s_data.α[1] = 1.0
+    solver_data.α[1] = 1.0
     iter = 1
-    while s_data.α[1] >= α_min
+    while solver_data.α[1] >= α_min
         iter > max_iter && (verbose && (@warn "forward pass failure"), break)
 
         J = Inf
         #TODO: remove try-catch
         try
-            rollout!(p_data, m_data, α=s_data.α[1])
-            J = objective!(s_data, m_data, mode=:current)[1]
+            rollout!(policy, problem, α=solver_data.α[1])
+            J = cost!(solver_data, problem, mode=:current)[1]
         catch
             if verbose
                 @warn "rollout failure"
-                @show norm(s_data.gradient)
+                @show norm(solver_data.gradient)
             end
         end
-        if (J <= J_prev + c1 * s_data.α[1] * delta_grad_product)
+        if (J <= J_prev + c1 * solver_data.α[1] * delta_grad_product)
             # update nominal
-            update_nominal_trajectory!(m_data)
-            s_data.obj[1] = J
-            s_data.status[1] = true
+            update_nominal_trajectory!(problem)
+            solver_data.obj[1] = J
+            solver_data.status[1] = true
             break
         else
-            s_data.α[1] *= 0.5
+            solver_data.α[1] *= 0.5
             iter += 1
         end
     end
-    s_data.α[1] < α_min && (verbose && (@warn "line search failure"))
+    solver_data.α[1] < α_min && (verbose && (@warn "line search failure"))
 end
 

@@ -29,12 +29,12 @@ function Dynamics(f::Function, nx::Int, nu::Int; nw::Int=0)
                     zeros(ny), zeros(ny, nx), zeros(ny, nu))
 end
 
-function step!(d::Dynamics, x, u, w) 
+function dynamics!(d::Dynamics, x, u, w) 
     d.val(d.val_cache, x, u, w)
     return d.val_cache
 end
 
-function eval_con_jac!(jx, ju, cons::Model, x, u, w)
+function jacobian!(jx, ju, cons::Model, x, u, w)
     for (t, con) in enumerate(cons) 
         con.jacx(con.jacx_cache, x[t], u[t], w[t])
         con.jacu(con.jacu_cache, x[t], u[t], w[t])

@@ -38,13 +38,13 @@
 
     d = [zeros(nx) for t = 1:T-1]
     for (t, dyn) in enumerate(model) 
-        d[t] .= step!(dyn, X[t], U[t], W[t])
+        d[t] .= dynamics!(dyn, X[t], U[t], W[t])
     end
     @test norm(vcat(d...) - vcat([euler_explicit(X[t], U[t], W[t]) for t = 1:T-1]...)) < 1.0e-8
   
     jx = [zeros(nx, nx) for t = 1:T-1] 
     ju = [zeros(nx, nu) for t = 1:T-1]
-    IterativeLQR.eval_con_jac!(jx, ju, model, X, U, W) 
+    IterativeLQR.jacobian!(jx, ju, model, X, U, W) 
     jac_dense = [jx[1] ju[1] zeros(nx, nx + nu);
                  zeros(nx, nx + nu) jx[2] ju[2]]
     @test norm(jac_dense - [jac_fd zeros(model[2].nx, model[2].nu + model[2].ny); zeros(model[2].ny, model[1].nx + model[1].nu) jac_fd]) < 1.0e-8

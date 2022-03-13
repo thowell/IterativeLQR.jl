@@ -1,6 +1,6 @@
 mutable struct AugmentedLagrangianCosts{T,C,CX,CU}
     costs::Objective{T}
-    c_data::ConstraintsData{T,C,CX,CU}
+    constraint_data::ConstraintsData{T,C,CX,CU}
     ρ::Vector{Vector{T}}               # penalty
     λ::Vector{Vector{T}}               # dual estimates
     a::Vector{Vector{Int}}             # active set
@@ -19,28 +19,28 @@ function augmented_lagrangian(model::Model{T}, costs::Objective{T}, cons::Constr
     c_tmp = [zeros(c.nc) for c in cons]
     cx_tmp = [zeros(c.nc, t < H ? model[t].nx : model[H-1].ny) for (t, c) in enumerate(cons)]
     cu_tmp = [zeros(c.nc, t < H ? model[t].nu : 0) for (t, c) in enumerate(cons)]
-    c_data = constraints_data(model, cons)
-    AugmentedLagrangianCosts(costs, c_data, ρ, λ, a, Iρ, 
+    data = constraint_data(model, cons)
+    AugmentedLagrangianCosts(costs, data, ρ, λ, a, Iρ, 
         c_tmp, cx_tmp, cu_tmp)
 end
 
-function eval_obj(obj::AugmentedLagrangianCosts, x, u, w)
+function cost(obj::AugmentedLagrangianCosts, x, u, w)
     # costs
-    J = eval_obj(obj.costs, x, u, w)
+    J = cost(obj.costs, x, u, w)
 
     # constraints
-    c = obj.c_data.c
+    c = obj.constraint_data.c
     ρ = obj.ρ
     λ = obj.λ
     a = obj.a
     T = length(c)
 
-    constraints!(obj.c_data, x, u, w)
-    active_set!(a, obj.c_data, λ)
+    constraints!(obj.constraint_data, x, u, w)
+    active_set!(a, obj.constraint_data, λ)
 
     for t = 1:T
         J += λ[t]' * c[t]
-        nc = obj.c_data.cons[t].nc 
+        nc = obj.constraint_data.cons[t].nc 
         for i = 1:nc 
             if a[t][i] == 1
                 J += 0.5 * ρ[t][i] * c[t][i]^2.0
@@ -50,8 +50,8 @@ function eval_obj(obj::AugmentedLagrangianCosts, x, u, w)
     return J
 end
 
-function active_set!(a, c_data::ConstraintsData, λ)
-    c = c_data.c
+function active_set!(a, constraint_data::ConstraintsData, λ)
+    c = constraint_data.c
     T = length(c)
 
     for t = 1:T
@@ -59,7 +59,7 @@ function active_set!(a, c_data::ConstraintsData, λ)
         fill!(a[t], 1)
 
         # check inequality constraints
-        for i in c_data.cons[t].idx_ineq
+        for i in constraint_data.cons[t].idx_ineq
             # check active-set criteria
             (c[t][i] < 0.0 && λ[t][i] == 0.0) && (a[t][i] = 0)
         end
@@ -69,8 +69,8 @@ end
 function augmented_lagrangian_update!(obj::AugmentedLagrangianCosts;
         s = 10.0, max_penalty = 1.0e12)
     # constraints
-    c = obj.c_data.c
-    cons = obj.c_data.cons
+    c = obj.constraint_data.c
+    cons = obj.constraint_data.cons
     ρ = obj.ρ
     λ = obj.λ
     T = length(c)

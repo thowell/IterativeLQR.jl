@@ -1,3 +1,5 @@
+
+
 struct ObjectiveData{C,X,U,XX,UU,UX}
     costs::C
     gx::Vector{X}
@@ -7,15 +9,15 @@ struct ObjectiveData{C,X,U,XX,UU,UX}
     gux::Vector{UX}
 end
 
-function objective_data(dynamics::Model{T}, costs) where T
-	gx = [[zeros(d.nx) for d in dynamics]..., 
-        zeros(dynamics[end].ny)]
-    gu = [zeros(d.nu) for d in dynamics]
-    gxx = [[zeros(d.nx, d.nx) for d in dynamics]..., 
-        zeros(dynamics[end].ny, dynamics[end].ny)]
-    guu = [zeros(d.nu, d.nu) for d in dynamics]
-    gux = [zeros(d.nu, d.nx) for d in dynamics]
-    ObjectiveData(costs, gx, gu, gxx, guu, gux)
+function objective_data(model::Model, obj)
+	gx = [[zeros(d.nx) for d in model]..., 
+        zeros(model[end].ny)]
+    gu = [zeros(d.nu) for d in model]
+    gxx = [[zeros(d.nx, d.nx) for d in model]..., 
+        zeros(model[end].ny, model[end].ny)]
+    guu = [zeros(d.nu, d.nu) for d in model]
+    gux = [zeros(d.nu, d.nx) for d in model]
+    ObjectiveData(obj, gx, gu, gxx, guu, gux)
 end
 
 function reset!(data::ObjectiveData) 

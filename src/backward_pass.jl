@@ -1,33 +1,33 @@
-function backward_pass!(p_data::PolicyData, m_data::ModelData; mode = :nominal)
+function backward_pass!(policy::PolicyData, problem::ProblemData; mode = :nominal)
 
-    T = length(m_data.x)
-    fx = m_data.model_deriv.fx
-    fu = m_data.model_deriv.fu
-    gx = m_data.obj_deriv.gx
-    gu = m_data.obj_deriv.gu
-    gxx = m_data.obj_deriv.gxx
-    guu = m_data.obj_deriv.guu
-    gux = m_data.obj_deriv.gux
+    T = length(problem.x)
+    fx = problem.model.fx
+    fu = problem.model.fu
+    gx = problem.objective.gx
+    gu = problem.objective.gu
+    gxx = problem.objective.gxx
+    guu = problem.objective.guu
+    gux = problem.objective.gux
 
     # policy
     if mode == :nominal
-        K = p_data.K
-        k = p_data.k
+        K = policy.K
+        k = policy.k
     else
-        K = p_data.K_cand
-        k = p_data.k_cand
+        K = policy.K_cand
+        k = policy.k_cand
     end
 
     # value function approximation
-    P = p_data.P
-    p = p_data.p
+    P = policy.P
+    p = policy.p
 
     # state-action value function approximation
-    Qx = p_data.Qx
-    Qu = p_data.Qu
-    Qxx = p_data.Qxx
-    Quu = p_data.Quu
-    Qux = p_data.Qux
+    Qx = policy.Qx
+    Qu = policy.Qu
+    Qxx = policy.Qxx
+    Quu = policy.Quu
+    Qux = policy.Qux
 
     # terminal value function
     P[T] .= gxx[T]
@@ -43,41 +43,41 @@ function backward_pass!(p_data::PolicyData, m_data::ModelData; mode = :nominal)
         Qu[t] .+= gu[t]
 
         # Qxx[t] .= gxx[t] + fx[t]' * P[t+1] * fx[t]
-        mul!(p_data.xx̂_tmp[t], transpose(fx[t]), P[t+1])
-        mul!(Qxx[t], p_data.xx̂_tmp[t], fx[t])
+        mul!(policy.xx̂_tmp[t], transpose(fx[t]), P[t+1])
+        mul!(Qxx[t], policy.xx̂_tmp[t], fx[t])
         Qxx[t] .+= gxx[t]
 
         # Quu[t] .= guu[t] + fu[t]' * P[t+1] * fu[t]
-        mul!(p_data.ux̂_tmp[t], transpose(fu[t]), P[t+1])
-        mul!(Quu[t], p_data.ux̂_tmp[t], fu[t])
+        mul!(policy.ux̂_tmp[t], transpose(fu[t]), P[t+1])
+        mul!(Quu[t], policy.ux̂_tmp[t], fu[t])
         Quu[t] .+= guu[t]
 
         # Qux[t] .= gux[t] + fu[t]' * P[t+1] * fx[t]
-        mul!(p_data.ux̂_tmp[t], transpose(fu[t]), P[t+1])
-        mul!(Qux[t], p_data.ux̂_tmp[t], fx[t])
+        mul!(policy.ux̂_tmp[t], transpose(fu[t]), P[t+1])
+        mul!(Qux[t], policy.ux̂_tmp[t], fx[t])
         Qux[t] .+= gux[t]
 
         # K[t] .= -1.0 * Quu[t] \ Qux[t]
         # k[t] .= -1.0 * Quu[t] \ Qu[t]
-		p_data.uu_tmp[t] .= Quu[t]
-        LAPACK.potrf!('U', p_data.uu_tmp[t])
+		policy.uu_tmp[t] .= Quu[t]
+        LAPACK.potrf!('U', policy.uu_tmp[t])
         K[t] .= Qux[t]
         k[t] .= Qu[t]
-        LAPACK.potrs!('U', p_data.uu_tmp[t], K[t])
-		LAPACK.potrs!('U', p_data.uu_tmp[t], k[t])
+        LAPACK.potrs!('U', policy.uu_tmp[t], K[t])
+		LAPACK.potrs!('U', policy.uu_tmp[t], k[t])
 		K[t] .*= -1.0
 		k[t] .*= -1.0
 
         # P[t] .=  Qxx[t] + K[t]' * Quu[t] * K[t] + K[t]' * Qux[t] + Qux[t]' * K[t]
         # p[t] .=  Qx[t] + K[t]' * Quu[t] * k[t] + K[t]' * Qu[t] + Qux[t]' * k[t]
-		mul!(p_data.ux_tmp[t], Quu[t], K[t])
+		mul!(policy.ux_tmp[t], Quu[t], K[t])
 
-		mul!(P[t], transpose(K[t]), p_data.ux_tmp[t])
+		mul!(P[t], transpose(K[t]), policy.ux_tmp[t])
 		mul!(P[t], transpose(K[t]), Qux[t], 1.0, 1.0)
 		mul!(P[t], transpose(Qux[t]), K[t], 1.0, 1.0)
 		P[t] .+= Qxx[t]
 
-		mul!(p[t], transpose(p_data.ux_tmp[t]), k[t])
+		mul!(p[t], transpose(policy.ux_tmp[t]), k[t])
 		mul!(p[t], transpose(K[t]), Qu[t], 1.0, 1.0)
 		mul!(p[t], transpose(Qux[t]), k[t], 1.0, 1.0)
 		p[t] .+= Qx[t]

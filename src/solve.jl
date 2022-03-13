@@ -4,44 +4,50 @@ function ilqr_solve!(solver::Solver)
 	# 	color=:red, bold=true)
 
 	# data
-	p_data = solver.p_data   
-    m_data = solver.m_data
-    reset!(m_data.model_deriv)
-    reset!(m_data.obj_deriv) 
-	s_data = solver.s_data
-    solver.options.reset_cache && reset!(s_data)
+	policy = solver.policy   
+    problem = solver.problem
+    reset!(problem.model)
+    reset!(problem.objective) 
+	data = solver.data
+    solver.options.reset_cache && reset!(data)
 
-	objective!(s_data, m_data, mode=:nominal)
-    derivatives!(m_data, mode=:nominal)
-    backward_pass!(p_data, m_data, mode=:nominal)
+	cost!(data, problem, 
+        mode=:nominal)
+    gradients!(problem, 
+        mode=:nominal)
+    backward_pass!(policy, problem, 
+        mode=:nominal)
 
-    obj_prev = s_data.obj[1]
+    obj_prev = data.obj[1]
     for i = 1:solver.options.max_iter
-        forward_pass!(p_data, m_data, s_data,
+        forward_pass!(policy, problem, data,
             α_min=solver.options.α_min,
             linesearch=solver.options.linesearch,
             verbose=solver.options.verbose)
         if solver.options.linesearch != :none
-            derivatives!(m_data, mode=:nominal)
-            backward_pass!(p_data, m_data, mode=:nominal)
-            lagrangian_gradient!(s_data, p_data, m_data)
+            gradients!(problem, 
+                mode=:nominal)
+            backward_pass!(policy, problem, 
+                mode=:nominal)
+            lagrangian_gradient!(data, policy, problem)
         end
 
         # gradient norm
-        grad_norm = norm(s_data.gradient, Inf)
+        gradient_norm = norm(data.gradient, Inf)
 
         # info
-        s_data.iter[1] += 1
-        solver.options.verbose && println("     iter: $i
-             cost: $(s_data.obj[1])
-			 grad_norm: $(grad_norm)
-			 c_max: $(s_data.c_max[1])
-			 α: $(s_data.α[1])")
+        data.iter[1] += 1
+        solver.options.verbose && println(
+            "iter:          $i
+             cost:          $(data.obj[1])
+			 gradient_norm: $(gradient_norm)
+			 c_max:         $(data.c_max[1])
+			 α:             $(data.α[1])")
 
         # check convergence
-		grad_norm < solver.options.grad_tol && break
-        abs(s_data.obj[1] - obj_prev) < solver.options.obj_tol ? break : (obj_prev = s_data.obj[1])
-        !s_data.status[1] && break
+		gradient_norm < solver.options.grad_tol && break
+        abs(data.obj[1] - obj_prev) < solver.options.obj_tol ? break : (obj_prev = data.obj[1])
+        !data.status[1] && break
     end
 
     return nothing
@@ -58,20 +64,20 @@ end
     gradient of Lagrangian
         https://web.stanford.edu/class/ee363/lectures/lqr-lagrange.pdf
 """
-function lagrangian_gradient!(s_data::SolverData, p_data::PolicyData, m_data::ModelData)
-	p = p_data.p
-    Qx = p_data.Qx
-    Qu = p_data.Qu
-    T = length(m_data.x)
+function lagrangian_gradient!(data::SolverData, policy::PolicyData, problem::ProblemData)
+	p = policy.p
+    Qx = policy.Qx
+    Qu = policy.Qu
+    T = length(problem.x)
 
     for t = 1:T-1
-        Lx = @views s_data.gradient[s_data.idx_x[t]]
+        Lx = @views data.gradient[data.idx_x[t]]
         Lx .= Qx[t] 
         Lx .-= p[t] 
-        Lu = @views s_data.gradient[s_data.idx_u[t]]
+        Lu = @views data.gradient[data.idx_u[t]]
         Lu .= Qu[t]
-        # s_data.gradient[s_data.idx_x[t]] = Qx[t] - p[t] # should always be zero by construction
-        # s_data.gradient[s_data.idx_u[t]] = Qu[t]
+        # data.gradient[data.idx_x[t]] = Qx[t] - p[t] # should always be zero by construction
+        # data.gradient[data.idx_u[t]] = Qu[t]
     end
     # NOTE: gradient wrt xT is satisfied implicitly
 end
@@ -85,15 +91,15 @@ function constrained_ilqr_solve!(solver::Solver)
 	# 	color=:red, bold=true)
 
     # reset solver cache 
-    reset!(solver.s_data) 
+    reset!(solver.data) 
 
     # reset duals 
-    for (t, λ) in enumerate(solver.m_data.obj_deriv.costs.λ)
+    for (t, λ) in enumerate(solver.problem.objective.costs.λ)
         fill!(λ, 0.0)
 	end
 
 	# initialize penalty
-	for (t, ρ) in enumerate(solver.m_data.obj_deriv.costs.ρ)
+	for (t, ρ) in enumerate(solver.problem.objective.costs.ρ)
         fill!(ρ, solver.options.ρ_init)
 	end
 
@@ -104,14 +110,16 @@ function constrained_ilqr_solve!(solver::Solver)
 		ilqr_solve!(solver)
 
 		# update trajectories
-		objective!(solver.s_data, solver.m_data, mode=:nominal)
+		cost!(solver.data, solver.problem, 
+            mode=:nominal)
 		
         # constraint violation
-		solver.s_data.c_max[1] <= solver.options.con_tol && break
+		solver.data.c_max[1] <= solver.options.con_tol && break
 
         # dual ascent
-		augmented_lagrangian_update!(solver.m_data.obj_deriv.costs,
-			s=solver.options.ρ_scale, max_penalty=solver.options.ρ_max)
+		augmented_lagrangian_update!(solver.problem.objective.costs,
+			s=solver.options.ρ_scale, 
+            max_penalty=solver.options.ρ_max)
 	end
 
     return nothing

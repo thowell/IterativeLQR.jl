@@ -32,10 +32,10 @@
     @test cT.val_cache[1] ≈ oT(x1, u1, w1)
     @test norm(cT.gradx_cache - 20.0 * x1) < 1.0e-8
 
-    @test IterativeLQR.eval_obj(obj, X, U, X) - sum([ot(X[t], U[t], W[t]) for t = 1:T-1]) - oT(X[T], U[T], W[T]) ≈ 0.0
+    @test IterativeLQR.cost(obj, X, U, X) - sum([ot(X[t], U[t], W[t]) for t = 1:T-1]) - oT(X[T], U[T], W[T]) ≈ 0.0
     gradx = [zeros(nx) for t = 1:T]
     gradu = [zeros(nu) for t = 1:T-1]
-    IterativeLQR.eval_obj_grad!(gradx, gradu, obj, X, U, W) 
+    IterativeLQR.cost_gradient!(gradx, gradu, obj, X, U, W) 
     grad = vcat([[gradx[t]; gradu[t]] for t = 1:T-1]..., gradx[T]...)
     @test norm(grad - vcat([[2.0 * x1; 0.2 * u1] for t = 1:T-1]..., 20.0 * x1)) < 1.0e-8
 end

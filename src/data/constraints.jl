@@ -20,8 +20,7 @@ function constraints!(constraint_data::ConstraintsData, x, u, w)
     constraints!(constraint_data.c, constraint_data.cons, x, u, w)
 end
 
-function constraint_violation(constraint_data::ConstraintsData; 
-    norm_type=Inf)
+function constraint_violation(constraint_data::ConstraintsData; norm_type=Inf)
     cons = constraint_data.cons
     T = length(cons)
     c_max = 0.0
@@ -39,5 +38,6 @@ end
 function constraint_violation(constraint_data::ConstraintsData, x, u, w; 
     norm_type=Inf)
     constraints!(constraint_data, x, u, w)
-    constraint_violation(constraint_data, norm_type=norm_type)
+    constraint_violation(constraint_data, 
+        norm_type=norm_type)
 end

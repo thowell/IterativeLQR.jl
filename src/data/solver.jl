@@ -4,7 +4,7 @@
 struct SolverData{T}
     obj::Vector{T}              # objective value
     gradient::Vector{T}         # Lagrangian gradient
-	c_max::Vector{T}            # maximum constraint violation
+    c_max::Vector{T}            # maximum constraint violation
 
     idx_x::Vector{Vector{Int}}  # indices for state trajectory
     idx_u::Vector{Vector{Int}}  # indices for control trajectory
@@ -14,10 +14,12 @@ struct SolverData{T}
 
     iter::Vector{Int}
 
-	cache::Dict{Symbol,Vector{T}}  # solver stats
+    cache::Dict{Symbol,Vector{T}}  # solver stats
 end
 
-function solver_data(model::Model{T}; max_cache=1000) where T
+function solver_data(model::Model{T}; 
+    max_cache=1000) where T
+    
     # indices x and u
     idx_x = Vector{Int}[]
     idx_u = Vector{Int}[] 
@@ -33,13 +35,13 @@ function solver_data(model::Model{T}; max_cache=1000) where T
     push!(idx_x, collect(n_sum .+ (1:model[end].ny)))
 
     obj = [Inf]
-	c_max = [0.0]
+    c_max = [0.0]
     α = [1.0]
     gradient = zeros(num_var(model))
-	cache = Dict(:obj => zeros(max_cache), 
-                 :grad => zeros(max_cache), 
-                 :c_max => zeros(max_cache), 
-                 :α => zeros(max_cache))
+    cache = Dict(:obj => zeros(max_cache), 
+                :grad => zeros(max_cache), 
+                :c_max => zeros(max_cache), 
+                :α => zeros(max_cache))
 
     SolverData(obj, gradient, c_max, idx_x, idx_u, α, [false], [0], cache)
 end
@@ -60,9 +62,9 @@ end
 function cache!(data::SolverData)
     iter = 1 #data.cache[:iter] 
     # (iter > length(data[:obj])) && (@warn "solver data cache exceeded")
-	data.cache[:obj][iter] = data.obj
-	data.cache[:gradient][iter] = data.gradient
-	data.cache[:c_max][iter] = data.c_max
-	data.cache[:α][iter] = data.α
+    data.cache[:obj][iter] = data.obj
+    data.cache[:gradient][iter] = data.gradient
+    data.cache[:c_max][iter] = data.c_max
+    data.cache[:α][iter] = data.α
     return nothing
 end
