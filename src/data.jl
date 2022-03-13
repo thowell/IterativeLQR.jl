@@ -2,7 +2,8 @@
     Model Data
 """
 
-struct ModelDerivativesData{X,U,W}
+struct ModelDerivativesData{T,X,U,W}
+    dynamics::Vector{Dynamics{T}}
     fx::Vector{X}
     fu::Vector{U}
 	fw::Vector{W}
@@ -12,7 +13,7 @@ function model_derivatives_data(model::Model)
 	fx = [zeros(d.ny, d.nx) for d in model]
     fu = [zeros(d.ny, d.nu) for d in model]
 	fw = [zeros(d.ny, d.nw) for d in model]
-    ModelDerivativesData(fx, fu, fw)
+    ModelDerivativesData(model, fx, fu, fw)
 end
 
 function reset!(data::ModelDerivativesData) 
@@ -24,7 +25,8 @@ function reset!(data::ModelDerivativesData)
     end 
 end
 
-struct ObjectiveDerivativesData{X,U,XX,UU,UX}
+struct ObjectiveDerivativesData{C,X,U,XX,UU,UX}
+    costs::C
     gx::Vector{X}
     gu::Vector{U}
     gxx::Vector{XX}
@@ -32,7 +34,7 @@ struct ObjectiveDerivativesData{X,U,XX,UU,UX}
     gux::Vector{UX}
 end
 
-function objective_derivatives_data(model::Model)
+function objective_derivatives_data(model::Model, obj)
 	gx = [[zeros(d.nx) for d in model]..., 
         zeros(model[end].ny)]
     gu = [zeros(d.nu) for d in model]
@@ -40,7 +42,7 @@ function objective_derivatives_data(model::Model)
         zeros(model[end].ny, model[end].ny)]
     guu = [zeros(d.nu, d.nu) for d in model]
     gux = [zeros(d.nu, d.nx) for d in model]
-    ObjectiveDerivativesData(gx, gu, gxx, guu, gux)
+    ObjectiveDerivativesData(obj, gx, gu, gxx, guu, gux)
 end
 
 function reset!(data::ObjectiveDerivativesData) 
@@ -68,16 +70,13 @@ mutable struct ModelData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
     ū::Vector{U}
 
     # dynamics model
-    model::Model{T}
-
-    # objective
-    obj::O
+    # model::Model{T}
 
     # dynamics derivatives data
-    model_deriv::ModelDerivativesData{FX,FU,FW}
+    model_deriv::ModelDerivativesData{T,FX,FU,FW}
 
     # objective derivatives data
-    obj_deriv::ObjectiveDerivativesData{OX,OU,OXX,OUU,OUX}
+    obj_deriv::ObjectiveDerivativesData{O,OX,OU,OXX,OUU,OUX}
 
     # z = (x1...,xT,u1,...,uT-1) | Δz = (Δx1...,ΔxT,Δu1,...,ΔuT-1)
     z::Vector{T}
@@ -99,18 +98,18 @@ function model_data(model::Model, obj;
     ū = [[zeros(d.nu) for d in model]..., zeros(0)]
 
     model_deriv = model_derivatives_data(model)
-    obj_deriv = objective_derivatives_data(model)
+    obj_deriv = objective_derivatives_data(model, obj)
 
     z = zeros(num_var(model))
 
-    ModelData(x, u, w, x̄, ū, model, obj, model_deriv, obj_deriv, z)
+    ModelData(x, u, w, x̄, ū, model_deriv, obj_deriv, z)
 end
 
 function objective(data::ModelData; mode = :nominal)
     if mode == :nominal
-        return eval_obj(data.obj, data.x̄, data.ū, data.w)
+        return eval_obj(data.obj_deriv.costs, data.x̄, data.ū, data.w)
     elseif mode == :current
-        return eval_obj(data.obj, data.x, data.u, data.w)
+        return eval_obj(data.obj_deriv.costs, data.x, data.u, data.w)
     else 
         return 0.0 
     end
@@ -250,14 +249,14 @@ end
 
 function objective!(s_data::SolverData, m_data::ModelData; mode = :nominal)
 	if mode == :nominal
-		s_data.obj[1] = eval_obj(m_data.obj, m_data.x̄, m_data.ū, m_data.w)
+		s_data.obj[1] = eval_obj(m_data.obj_deriv.costs, m_data.x̄, m_data.ū, m_data.w)
 	elseif mode == :current
-		s_data.obj[1] = eval_obj(m_data.obj, m_data.x, m_data.u, m_data.w)
+		s_data.obj[1] = eval_obj(m_data.obj_deriv.costs, m_data.x, m_data.u, m_data.w)
 	end
 
-	if m_data.obj isa AugmentedLagrangianCosts
+	if m_data.obj_deriv.costs isa AugmentedLagrangianCosts
 		s_data.c_max[1] = constraint_violation(
-            m_data.obj.c_data,
+            m_data.obj_deriv.costs.c_data,
 			m_data.x, m_data.u, m_data.w,
 			norm_type = Inf)
 	end

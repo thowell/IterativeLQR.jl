@@ -1,12 +1,11 @@
-function model_derivatives!(data::ModelData; mode=:nominal)
-    model = data.model 
+function derivatives!(dynamics::Model, data::ModelData; mode=:nominal)
     x, u, w = trajectories(data, mode=mode)
     jx = data.model_deriv.fx
     ju = data.model_deriv.fu
-    eval_con_jac!(jx, ju, model, x, u, w)
+    eval_con_jac!(jx, ju, dynamics, x, u, w)
 end
 
-function objective_derivatives!(obj::Objective, data::ModelData; mode=:nominal)
+function derivatives!(obj::Objective, data::ModelData; mode=:nominal)
     x, u, w = trajectories(data, mode=mode)
     gradx = data.obj_deriv.gx
     gradu = data.obj_deriv.gu
@@ -17,14 +16,7 @@ function objective_derivatives!(obj::Objective, data::ModelData; mode=:nominal)
     eval_obj_hess!(hessxx, hessuu, hessux, obj, x, u, w) 
 end
 
-function constraints_derivatives!(c_data::ConstraintsData, m_data::ModelData; mode=:nominal)
-    x, u, w = trajectories(m_data, mode=mode)
-    cx = c_data.cx 
-    cu = c_data.cu
-    eval_con_jac!(cx, cu, c_data.cons, x, u, w)
-end
-
-function objective_derivatives!(obj::AugmentedLagrangianCosts, data::ModelData; mode=:nominal)
+function derivatives!(obj::AugmentedLagrangianCosts, data::ModelData; mode=:nominal)
     # objective 
     gx = data.obj_deriv.gx
     gu = data.obj_deriv.gu
@@ -48,8 +40,8 @@ function objective_derivatives!(obj::AugmentedLagrangianCosts, data::ModelData; 
     T = length(obj)
 
     # derivatives
-    objective_derivatives!(obj.costs, data, mode=mode)
-    constraints_derivatives!(obj.c_data, data, mode=mode)
+    derivatives!(obj.costs, data, mode=mode)
+    derivatives!(obj.c_data, data, mode=mode)
 
     for t = 1:T
         nc = cons[t].nc
@@ -87,7 +79,15 @@ function objective_derivatives!(obj::AugmentedLagrangianCosts, data::ModelData; 
     end
 end
 
-function derivatives!(m_data::ModelData; mode=:nominal)
-    model_derivatives!(m_data, mode=mode)
-    objective_derivatives!(m_data.obj, m_data, mode=mode)
+function derivatives!(c_data::ConstraintsData, m_data::ModelData; mode=:nominal)
+    x, u, w = trajectories(m_data, mode=mode)
+    cx = c_data.cx 
+    cu = c_data.cu
+    eval_con_jac!(cx, cu, c_data.cons, x, u, w)
+end
+
+function derivatives!(m_data::ModelData; 
+    mode=:nominal)
+    derivatives!(m_data.model_deriv.dynamics, m_data, mode=mode)
+    derivatives!(m_data.obj_deriv.costs, m_data, mode=mode)
 end

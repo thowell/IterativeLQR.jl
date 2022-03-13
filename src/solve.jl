@@ -88,12 +88,12 @@ function constrained_ilqr_solve!(solver::Solver)
     reset!(solver.s_data) 
 
     # reset duals 
-    for (t, λ) in enumerate(solver.m_data.obj.λ)
+    for (t, λ) in enumerate(solver.m_data.obj_deriv.costs.λ)
         fill!(λ, 0.0)
 	end
 
 	# initialize penalty
-	for (t, ρ) in enumerate(solver.m_data.obj.ρ)
+	for (t, ρ) in enumerate(solver.m_data.obj_deriv.costs.ρ)
         fill!(ρ, solver.options.ρ_init)
 	end
 
@@ -110,7 +110,7 @@ function constrained_ilqr_solve!(solver::Solver)
 		solver.s_data.c_max[1] <= solver.options.con_tol && break
 
         # dual ascent
-		augmented_lagrangian_update!(solver.m_data.obj,
+		augmented_lagrangian_update!(solver.m_data.obj_deriv.costs,
 			s=solver.options.ρ_scale, max_penalty=solver.options.ρ_max)
 	end
 

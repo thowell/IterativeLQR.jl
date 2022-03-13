@@ -1,6 +1,6 @@
 function rollout!(p_data::PolicyData, m_data::ModelData; α=1.0)
     # model 
-    model = m_data.model
+    model = m_data.model_deriv.dynamics
 
     # trajectories
     x = m_data.x
