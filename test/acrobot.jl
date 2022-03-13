@@ -106,14 +106,14 @@
 
     # ## problem
     options = Options(verbose=false,
-        linesearch=:armijo,
-        α_min=1.0e-5,
-        obj_tol=1.0e-3,
-        grad_tol=1.0e-3,
-        max_iter=100,
-        max_al_iter=10,
-        ρ_init=1.0,
-        ρ_scale=10.0)
+        line_search=:armijo,
+        min_step_size=1.0e-5,
+        objective_tolerance=1.0e-3,
+        lagrangian_gradient_tolerance=1.0e-3,
+        max_iterations=100,
+        max_dual_updates=10,
+        initial_constraint_penalty=1.0,
+        scaling_penalty=10.0)
     prob = solver(model, obj, cons, options=options)
     initialize_controls!(prob, ū) 
     initialize_states!(prob, x̄)
@@ -124,7 +124,7 @@
     # ## solution
     x_sol, u_sol = get_trajectory(prob)
 
-    @test norm(x_sol[T] - xT, Inf) < options.con_tol
+    @test norm(x_sol[T] - xT, Inf) < options.constraint_tolerance
 
     # ## allocations
     # info = @benchmark solve!($prob, a, b) setup=(a=deepcopy(x̄), b=deepcopy(ū))

@@ -25,9 +25,9 @@ IterativeLQR.trajectory_sensitivities(prob.problem, prob.policy, prob.solver_dat
 @benchmark IterativeLQR.trajectory_sensitivities($prob.problem, $prob.policy, $prob.solver_data)
 @code_warntype IterativeLQR.trajectory_sensitivities(prob.problem, prob.policy, prob.solver_data)
 
-rollout!(prob.policy, prob.problem, α=prob.solver_data.α[1])
-@benchmark rollout!($prob.policy, $prob.problem, α=$prob.solver_data.α[1])
-@code_warntype rollout!(prob.policy, prob.problem, α=prob.solver_data.α[1])
+rollout!(prob.policy, prob.problem, step_size=prob.solver_data.step_size[1])
+@benchmark rollout!($prob.policy, $prob.problem, step_size=$prob.solver_data.step_size[1])
+@code_warntype rollout!(prob.policy, prob.problem, step_size=prob.solver_data.step_size[1])
 
 augmented_lagrangian_update!(prob.problem.obj)
 @benchmark augmented_lagrangian_update!($prob.problem.obj)
@@ -50,8 +50,8 @@ function _forward_pass!(prob::Solver, x, u)
     initialize_states!(prob, x)
 
     forward_pass!(prob.policy, prob.problem, prob.solver_data,
-        α_min = 1.0e-5,
-        linesearch = :armijo)
+        min_step_size = 1.0e-5,
+        line_search = :armijo)
 end
 
 _forward_pass!(prob, x̄, ū)
@@ -66,7 +66,7 @@ using BenchmarkTools
 @benchmark $A .= $(Diagonal(b .* a))
 
 t = 1
-a = prob.problem.obj.ρ[t]
+a = prob.problem.obj.constraint_penalty[t]
 b = prob.problem.obj.a[t]
-c = prob.problem.obj.Iρ[t]
+c = prob.problem.obj.constraint_penalty_matrix[t]
 @benchmark $c .= $(Diagonal(a .* b))
