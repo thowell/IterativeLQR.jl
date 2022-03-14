@@ -3,9 +3,9 @@
     T = 101 
 
     # ## acrobot 
-    nx = 4 
-    nu = 1 
-    nw = 0 
+    num_state = 4 
+    num_action = 1 
+    num_parameter = 0 
 
     function acrobot(x, u, w)
         mass1 = 1.0  
@@ -80,28 +80,28 @@
     end
 
     # ## model
-    dyn = Dynamics(midpoint_explicit, nx, nu, nw=nw)
+    dyn = Dynamics(midpoint_explicit, num_state, num_action, num_parameter=num_parameter)
     model = [dyn for t = 1:T-1] 
 
     # ## initialization
     x1 = [0.0; 0.0; 0.0; 0.0] 
     xT = [0.0; π; 0.0; 0.0]
-    ū = [1.0e-3 * randn(nu) for t = 1:T-1] 
-    w = [zeros(nw) for t = 1:T]
+    ū = [1.0e-3 * randn(num_action) for t = 1:T-1] 
+    w = [zeros(num_parameter) for t = 1:T]
     x̄ = rollout(model, x1, ū, w)
 
     # ## objective 
     ot = (x, u, w) -> 0.1 * dot(x[3:4], x[3:4]) + 0.1 * dot(u, u)
     oT = (x, u, w) -> 0.1 * dot(x[3:4], x[3:4])
-    ct = Cost(ot, nx, nu, nw=nw)
-    cT = Cost(oT, nx, 0, nw=nw)
+    ct = Cost(ot, num_state, num_action, num_parameter=num_parameter)
+    cT = Cost(oT, num_state, 0, num_parameter=num_parameter)
     obj = [[ct for t = 1:T-1]..., cT]
 
     # ## constraints
     goal(x, u, w) = x - xT
 
     cont = Constraint()
-    conT = Constraint(goal, nx, 0)
+    conT = Constraint(goal, num_state, 0)
     cons = [[cont for t = 1:T-1]..., conT] 
 
     # ## problem

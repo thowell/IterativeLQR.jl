@@ -36,8 +36,8 @@ function backward_pass!(policy::PolicyData, problem::ProblemData;
     Qux = policy.action_value.hessian_action_state
 
     # terminal value function
-    P[T] .= gxx[T]
-    p[T] .=  gx[T]
+    P[H] .= gxx[H]
+    p[H] .=  gx[H]
 
     for t = H-1:-1:1
         # Qx[t] .= gx[t] + fx[t]' * p[t+1]

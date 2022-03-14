@@ -9,7 +9,7 @@ mutable struct Solver{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
 end
 
 function solver(dynamics::Vector{Dynamics{T}}, obj::Objective{T}; 
-    parameters=[[zeros(d.nw) for d in dynamics]..., zeros(0)],
+    parameters=[[zeros(d.num_parameter) for d in dynamics]..., zeros(0)],
     options=Options{T}()) where T
 
 	# allocate policy data
@@ -35,7 +35,7 @@ function current_trajectory(solver::Solver)
 end
 
 function solver(dynamics::Vector{Dynamics{T}}, costs::Vector{Cost{T}}, constraints::Constraints{T};
-    parameters=[[zeros(d.nw) for d in dynamics]..., zeros(0)],
+    parameters=[[zeros(d.num_parameter) for d in dynamics]..., zeros(0)],
     options=Options{T}()) where T
 
 	# augmented Lagrangian

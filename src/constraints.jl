@@ -2,10 +2,10 @@ struct Constraint{T}
     val 
     jacobian_state 
     jacobian_action
-    nc::Int
-    nx::Int 
-    nu::Int 
-    nw::Int
+    num_constraint::Int
+    num_state::Int 
+    num_action::Int 
+    num_parameter::Int
     val_cache::Vector{T} 
     jacobian_state_cache::Matrix{T}
     jacobian_action_cache::Matrix{T}
@@ -14,12 +14,12 @@ end
 
 Constraints{T} = Vector{Constraint{T}} where T
 
-function Constraint(f::Function, nx::Int, nu::Int; 
+function Constraint(f::Function, num_state::Int, num_action::Int; 
     indices_inequality::Vector{Int}=collect(1:0), 
-    nw::Int=0)
+    num_parameter::Int=0)
 
     #TODO: option to load/save methods
-    @variables x[1:nx], u[1:nu], w[1:nw]
+    @variables x[1:num_state], u[1:num_action], w[1:num_parameter]
     
     val = f(x, u, w)
     jacobian_state = Symbolics.jacobian(val, x)
@@ -29,13 +29,13 @@ function Constraint(f::Function, nx::Int, nu::Int;
     jacobian_state_func = eval(Symbolics.build_function(jacobian_state, x, u, w)[2])
     jacobian_action_func = eval(Symbolics.build_function(jacobian_action, x, u, w)[2])
 
-    nc = length(val) 
+    num_constraint = length(val) 
     
     return Constraint(
         val_func, 
         jacobian_state_func, jacobian_action_func,
-        nc, nx, nu, nw,  
-        zeros(nc), zeros(nc, nx), zeros(nc, nu), 
+        num_constraint, num_state, num_action, num_parameter,  
+        zeros(num_constraint), zeros(num_constraint, num_state), zeros(num_constraint, num_action), 
         indices_inequality)
 end
 
@@ -50,7 +50,7 @@ end
 
 function constraints!(violations, constraints::Constraints{T}, states, actions, parameters) where T
     for (t, con) in enumerate(constraints)
-        con.nc == 0 && continue
+        con.num_constraint == 0 && continue
         con.val(con.val_cache, states[t], actions[t], parameters[t])
         @views violations[t] .= con.val_cache
         fill!(con.val_cache, 0.0) # TODO: confirm this is necessary 
@@ -60,7 +60,7 @@ end
 function jacobian!(jacobian_states, jacobian_actions, constraints::Constraints{T}, states, actions, parameters) where T
     H = length(constraints)
     for (t, con) in enumerate(constraints)
-        con.nc == 0 && continue
+        con.num_constraint == 0 && continue
         con.jacobian_state(con.jacobian_state_cache, states[t], actions[t], parameters[t])
         @views jacobian_states[t] .= con.jacobian_state_cache
         fill!(con.jacobian_state_cache, 0.0) # TODO: confirm this is necessary

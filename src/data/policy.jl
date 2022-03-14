@@ -43,33 +43,33 @@ end
 
 function policy_data(dynamics::Vector{Dynamics{T}}) where T
     # policy
-	K = [zeros(d.nu, d.nx) for d in dynamics]
-    k = [zeros(d.nu) for d in dynamics]
+	K = [zeros(d.num_action, d.num_state) for d in dynamics]
+    k = [zeros(d.num_action) for d in dynamics]
 
-    K_candidate = [zeros(d.nu, d.nx) for d in dynamics]
-    k_candidate = [zeros(d.nu) for d in dynamics]
+    K_candidate = [zeros(d.num_action, d.num_state) for d in dynamics]
+    k_candidate = [zeros(d.num_action) for d in dynamics]
 
     # value function approximation
-    P = [[zeros(d.nx, d.nx) for d in dynamics]..., 
-            zeros(dynamics[end].ny, dynamics[end].ny)]
-    p =  [[zeros(d.nx) for d in dynamics]..., 
-            zeros(dynamics[end].ny)]
+    P = [[zeros(d.num_state, d.num_state) for d in dynamics]..., 
+            zeros(dynamics[end].num_next_state, dynamics[end].num_next_state)]
+    p =  [[zeros(d.num_state) for d in dynamics]..., 
+            zeros(dynamics[end].num_next_state)]
 
     value = Value(p, P)
 
     # action-value function approximation
-    Qx = [zeros(d.nx) for d in dynamics]
-    Qu = [zeros(d.nu) for d in dynamics]
-    Qxx = [zeros(d.nx, d.nx) for d in dynamics]
-    Quu = [zeros(d.nu, d.nu) for d in dynamics]
-    Qux = [zeros(d.nu, d.nx) for d in dynamics]
+    Qx = [zeros(d.num_state) for d in dynamics]
+    Qu = [zeros(d.num_action) for d in dynamics]
+    Qxx = [zeros(d.num_state, d.num_state) for d in dynamics]
+    Quu = [zeros(d.num_action, d.num_action) for d in dynamics]
+    Qux = [zeros(d.num_action, d.num_state) for d in dynamics]
 
     action_value = ActionValue(Qx, Qu, Qxx, Quu, Qux)
 
-	xx̂_tmp = [zeros(d.nx, d.ny) for d in dynamics]
-	ux̂_tmp = [zeros(d.nu, d.ny) for d in dynamics]
-	uu_tmp = [zeros(d.nu, d.nu) for d in dynamics]
-	ux_tmp = [zeros(d.nu, d.nx) for d in dynamics]
+	xx̂_tmp = [zeros(d.num_state, d.num_next_state) for d in dynamics]
+	ux̂_tmp = [zeros(d.num_action, d.num_next_state) for d in dynamics]
+	uu_tmp = [zeros(d.num_action, d.num_action) for d in dynamics]
+	ux_tmp = [zeros(d.num_action, d.num_state) for d in dynamics]
 
     PolicyData(K, k, K_candidate, k_candidate, 
         value,

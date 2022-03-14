@@ -14,9 +14,9 @@ struct Cost{T}
     hessian_action_state_cache::Matrix{T}
 end
 
-function Cost(f::Function, nx::Int, nu::Int; nw::Int=0)
+function Cost(f::Function, num_state::Int, num_action::Int; num_parameter::Int=0)
     #TODO: option to load/save methods
-    @variables x[1:nx], u[1:nu], w[1:nw]
+    @variables x[1:num_state], u[1:num_action], w[1:num_parameter]
     
     val = f(x, u, w)
     gradient_state = Symbolics.gradient(val, x)
@@ -36,8 +36,8 @@ function Cost(f::Function, nx::Int, nu::Int; nw::Int=0)
         gradient_state_func, gradient_action_func, 
         hessian_state_state_func, hessian_action_action_func, hessian_action_state_func,
         zeros(1), 
-        zeros(nx), zeros(nu), 
-        zeros(nx, nx), zeros(nu, nu), zeros(nu, nx))
+        zeros(num_state), zeros(num_action), 
+        zeros(num_state, num_state), zeros(num_action, num_action), zeros(num_action, num_state))
 end
 
 Objective{T} = Vector{Cost{T}} where T

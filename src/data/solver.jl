@@ -25,19 +25,19 @@ function solver_data(dynamics::Vector{Dynamics{T}};
     indices_action = Vector{Int}[] 
     n_sum = 0 
     m_sum = 0 
-    n_total = sum([d.nx for d in dynamics]) + dynamics[end].ny
+    n_total = sum([d.num_state for d in dynamics]) + dynamics[end].num_next_state
     for d in dynamics
-        push!(indices_state, collect(n_sum .+ (1:d.nx))) 
-        push!(indices_action, collect(n_total + m_sum .+ (1:d.nu)))
-        n_sum += d.nx 
-        m_sum += d.nu 
+        push!(indices_state, collect(n_sum .+ (1:d.num_state))) 
+        push!(indices_action, collect(n_total + m_sum .+ (1:d.num_action)))
+        n_sum += d.num_state 
+        m_sum += d.num_action 
     end
-    push!(indices_state, collect(n_sum .+ (1:dynamics[end].ny)))
+    push!(indices_state, collect(n_sum .+ (1:dynamics[end].num_next_state)))
 
     objective = [Inf]
     max_violation = [0.0]
     step_size = [1.0]
-    gradient = zeros(num_var(dynamics))
+    gradient = zeros(num_trajectory(dynamics))
     cache = Dict(:objective     => zeros(max_cache), 
                  :gradient      => zeros(max_cache), 
                  :max_violation => zeros(max_cache), 

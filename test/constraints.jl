@@ -1,30 +1,30 @@
 @testset "Constraints" begin 
     T = 5
-    nx = 2
-    nu = 1 
-    nw = 0
-    dim_x = [nx for t = 1:T] 
-    dim_u = [nu for t = 1:T-1]
-    dim_w = [nw for t = 1:T]
+    num_state = 2
+    num_action = 1 
+    num_parameter = 0
+    dim_x = [num_state for t = 1:T] 
+    dim_u = [num_action for t = 1:T-1]
+    dim_w = [num_parameter for t = 1:T]
     x = [rand(dim_x[t]) for t = 1:T] 
     u = [[rand(dim_u[t]) for t = 1:T-1]..., zeros(0)]
     w = [rand(dim_w[t]) for t = 1:T]
 
-    ct = (x, u, w) -> [-ones(nx) - x; x - ones(nx)]
+    ct = (x, u, w) -> [-ones(num_state) - x; x - ones(num_state)]
     cT = (x, u, w) -> x
 
-    cont = Constraint(ct, nx, nu, indices_inequality=collect(1:2nx), nw=nw)
-    conT = Constraint(cT, nx, 0, indices_inequality=collect(1:nx), nw=nw)
+    cont = Constraint(ct, num_state, num_action, indices_inequality=collect(1:2num_state), num_parameter=num_parameter)
+    conT = Constraint(cT, num_state, 0, indices_inequality=collect(1:num_state), num_parameter=num_parameter)
 
     cons = [[cont for t = 1:T-1]..., conT]
     
-    nct = 2 * nx
-    ncT = nx
+    nct = 2 * num_state
+    ncT = num_state
     ct0 = zeros(nct) 
     cT0 = zeros(ncT)
     cont.val(ct0, x[1], u[1], w[1])
     conT.val(cT0, x[T], u[T], w[T])
-    @test norm(ct0 - [-ones(nx) - x[1]; x[1] - ones(nx)]) < 1.0e-8
+    @test norm(ct0 - [-ones(num_state) - x[1]; x[1] - ones(num_state)]) < 1.0e-8
     @test norm(cT0 - x[T]) < 1.0e-8
 
     cc = [[zeros(nct) for t = 1:T-1]..., zeros(ncT)]
@@ -32,8 +32,8 @@
 
     @test norm(vcat(cc...) - vcat([ct(x[t], u[t], w[t]) for t = 1:T-1]..., cT(x[T], u[T], w[T]))) < 1.0e-8
     
-    jx = [[zeros(nct, nx) for t = 1:T-1]..., zeros(ncT, nx)]
-    ju = [[zeros(nct, nu) for t = 1:T-1]..., zeros(ncT, nu)]
+    jx = [[zeros(nct, num_state) for t = 1:T-1]..., zeros(ncT, num_state)]
+    ju = [[zeros(nct, num_action) for t = 1:T-1]..., zeros(ncT, num_action)]
     IterativeLQR.jacobian!(jx, ju, cons, x, u, w)
 
     for t = 1:T-1

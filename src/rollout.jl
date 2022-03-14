@@ -31,7 +31,7 @@ function rollout!(policy::PolicyData, problem::ProblemData;
 end
 
 function rollout(dynamics::Vector{Dynamics{T}}, initial_state, actions, 
-    parameters=[zeros(d.nw) for d in dynamics]) where T
+    parameters=[zeros(d.num_parameter) for d in dynamics]) where T
 
     x_history = [initial_state]
     for (t, d) in enumerate(dynamics) 

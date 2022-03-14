@@ -23,24 +23,24 @@ mutable struct ProblemData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
 end
 
 function problem_data(dynamics, costs; 
-    parameters=[[zeros(d.nw) for d in dynamics]..., zeros(0)])
+    parameters=[[zeros(d.num_parameter) for d in dynamics]..., zeros(0)])
 
     length(parameters) == length(dynamics) && (parameters = [parameters..., zeros(0)])
     @assert length(dynamics) + 1 == length(parameters)
     @assert length(dynamics) + 1 == length(costs)
 
-	states = [[zeros(d.nx) for d in dynamics]..., 
-            zeros(dynamics[end].ny)]
-    actions = [[zeros(d.nu) for d in dynamics]..., zeros(0)]
+	states = [[zeros(d.num_state) for d in dynamics]..., 
+            zeros(dynamics[end].num_next_state)]
+    actions = [[zeros(d.num_action) for d in dynamics]..., zeros(0)]
 
-    nominal_states = [[zeros(d.nx) for d in dynamics]..., 
-            zeros(dynamics[end].ny)]
-    nominal_actions = [[zeros(d.nu) for d in dynamics]..., zeros(0)]
+    nominal_states = [[zeros(d.num_state) for d in dynamics]..., 
+            zeros(dynamics[end].num_next_state)]
+    nominal_actions = [[zeros(d.num_action) for d in dynamics]..., zeros(0)]
 
     model = model_data(dynamics)
     objective = objective_data(dynamics, costs)
 
-    trajectory = zeros(num_var(dynamics))
+    trajectory = zeros(num_trajectory(dynamics))
 
     ProblemData(states, actions, parameters, nominal_states, nominal_actions, model, objective, trajectory)
 end

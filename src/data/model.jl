@@ -10,10 +10,10 @@ struct ModelData{T,X,U,W}
 end
 
 function model_data(dynamics::Vector{Dynamics{T}}) where T
-	jacobian_state = [zeros(d.ny, d.nx) for d in dynamics]
-    jacobian_action = [zeros(d.ny, d.nu) for d in dynamics]
-	jacobian_parameter = [zeros(d.ny, d.nw) for d in dynamics]
-    ModelData(model, jacobian_state, jacobian_action, jacobian_parameter)
+	jacobian_state = [zeros(d.num_next_state, d.num_state) for d in dynamics]
+    jacobian_action = [zeros(d.num_next_state, d.num_action) for d in dynamics]
+	jacobian_parameter = [zeros(d.num_next_state, d.num_parameter) for d in dynamics]
+    ModelData(dynamics, jacobian_state, jacobian_action, jacobian_parameter)
 end
 
 function reset!(data::ModelData) 

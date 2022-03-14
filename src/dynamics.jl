@@ -2,10 +2,10 @@ struct Dynamics{T}
     val 
     jacobian_state 
     jacobian_action
-    ny::Int 
-    nx::Int 
-    nu::Int
-    nw::Int
+    num_next_state::Int 
+    num_state::Int 
+    num_action::Int
+    num_parameter::Int
     val_cache::Vector{T} 
     jacobian_state_cache::Matrix{T}
     jacobian_action_cache::Matrix{T}
@@ -13,20 +13,20 @@ end
 
 Model{T} = Vector{Dynamics{T}} where T
 
-function Dynamics(f::Function, nx::Int, nu::Int; nw::Int=0)
+function Dynamics(f::Function, num_state::Int, num_action::Int; num_parameter::Int=0)
     #TODO: option to load/save methods
-    @variables x[1:nx], u[1:nu], w[1:nw] 
+    @variables x[1:num_state], u[1:num_action], w[1:num_parameter] 
     y = f(x, u, w) 
     jacobian_state = Symbolics.jacobian(y, x);
     jacobian_action = Symbolics.jacobian(y, u);
     val_func = eval(Symbolics.build_function(y, x, u, w)[2]);
     jacobian_state_func = eval(Symbolics.build_function(jacobian_state, x, u, w)[2]);
     jacobian_action_func = eval(Symbolics.build_function(jacobian_action, x, u, w)[2]);
-    ny = length(y)
+    num_next_state = length(y)
 
     return Dynamics(val_func, jacobian_state_func, jacobian_action_func, 
-                    ny, nx, nu, nw, 
-                    zeros(ny), zeros(ny, nx), zeros(ny, nu))
+                    num_next_state, num_state, num_action, num_parameter, 
+                    zeros(num_next_state), zeros(num_next_state, num_state), zeros(num_next_state, num_action))
 end
 
 function dynamics!(d::Dynamics, state, action, parameter) 
@@ -45,12 +45,12 @@ function jacobian!(jacobian_states, jacobian_actions, dynamics::Vector{Dynamics{
     end
 end
 
-num_var(dynamics::Vector{Dynamics{T}}) where T = sum([d.nx + d.nu for d in dynamics]) + dynamics[end].ny
+num_trajectory(dynamics::Vector{Dynamics{T}}) where T = sum([d.num_state + d.num_action for d in dynamics]) + dynamics[end].num_next_state
 
 # user-provided dynamics and gradients
-function Dynamics(f::Function, fx::Function, fu::Function, ny::Int, nx::Int, nu::Int, 
-    nw::Int=0)  
+function Dynamics(f::Function, fx::Function, fu::Function, num_next_state::Int, num_state::Int, num_action::Int, 
+    num_parameter::Int=0)  
     return Dynamics(f, fx, fu, 
-                    ny, nx, nu, nw, 
-                    zeros(ny), zeros(ny, nx), zeros(ny, nu))
+                    num_next_state, num_state, num_action, num_parameter, 
+                    zeros(num_next_state), zeros(num_next_state, num_state), zeros(num_next_state, num_action))
 end

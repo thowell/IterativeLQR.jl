@@ -11,8 +11,8 @@ using LinearAlgebra
 T = 11 
 
 # ## acrobot 
-nx = 2
-nu = 1 
+num_state = 2
+num_action = 1 
 
 function particle(x, u, w)
    A = [1.0 1.0; 0.0 1.0]
@@ -21,27 +21,27 @@ function particle(x, u, w)
 end
 
 # ## model
-dyn = Dynamics(particle, nx, nu)
+dyn = Dynamics(particle, num_state, num_action)
 model = [dyn for t = 1:T-1] 
 
 # ## initialization
 x1 = [0.0; 0.0] 
 xT = [1.0; 0.0]
-ū = [1.0e-1 * randn(nu) for t = 1:T-1] 
+ū = [1.0e-1 * randn(num_action) for t = 1:T-1] 
 x̄ = rollout(model, x1, ū)
 
 # ## objective 
 ot = (x, u, w) -> 0.1 * dot(x, x) + 0.1 * dot(u, u)
 oT = (x, u, w) -> 0.1 * dot(x, x)
-ct = Cost(ot, nx, nu)
-cT = Cost(oT, nx, 0)
+ct = Cost(ot, num_state, num_action)
+cT = Cost(oT, num_state, 0)
 obj = [[ct for t = 1:T-1]..., cT]
 
 # ## constraints
 goal(x, u, w) = x - xT
 
 cont = Constraint()
-conT = Constraint(goal, nx, 0)
+conT = Constraint(goal, num_state, 0)
 cons = [[cont for t = 1:T-1]..., conT] 
 
 # ## problem

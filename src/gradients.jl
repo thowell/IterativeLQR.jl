@@ -52,8 +52,8 @@ function gradients!(obj::AugmentedLagrangianCosts, data::ProblemData;
         mode=mode)
 
     for t = 1:H
-        nc = cons[t].nc
-        for i = 1:nc 
+        num_constraint = cons[t].num_constraint
+        for i = 1:num_constraint 
             Iρ[t][i, i] = ρ[t][i] * a[t][i]
         end
         c_tmp[t] .= λ[t] 

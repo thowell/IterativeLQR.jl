@@ -14,16 +14,16 @@ function augmented_lagrangian(model::Model{T}, costs::Objective{T}, constraints:
     # horizon
     H = length(model) + 1
     # penalty
-    constraint_penalty = [ones(c.nc) for c in constraints]
-    constraint_penalty_matrix = [Diagonal(ones(c.nc)) for c in constraints]
+    constraint_penalty = [ones(c.num_constraint) for c in constraints]
+    constraint_penalty_matrix = [Diagonal(ones(c.num_constraint)) for c in constraints]
     # duals
-    constraint_dual = [zeros(c.nc) for c in constraints]
+    constraint_dual = [zeros(c.num_constraint) for c in constraints]
     # active set
-    active_set = [ones(Int, c.nc) for c in constraints]
+    active_set = [ones(Int, c.num_constraint) for c in constraints]
     # pre-allocated memory
-    constraint_tmp = [zeros(c.nc) for c in constraints]
-    constraint_jacobian_state_tmp = [zeros(c.nc, t < H ? model[t].nx : model[H-1].ny) for (t, c) in enumerate(constraints)]
-    constraint_jacobian_action_tmp = [zeros(c.nc, t < H ? model[t].nu : 0) for (t, c) in enumerate(constraints)]
+    constraint_tmp = [zeros(c.num_constraint) for c in constraints]
+    constraint_jacobian_state_tmp = [zeros(c.num_constraint, t < H ? model[t].num_state : model[H-1].num_next_state) for (t, c) in enumerate(constraints)]
+    constraint_jacobian_action_tmp = [zeros(c.num_constraint, t < H ? model[t].num_action : 0) for (t, c) in enumerate(constraints)]
     data = constraint_data(model, constraints)
     AugmentedLagrangianCosts(costs, 
         data, 
@@ -54,8 +54,8 @@ function cost(obj::AugmentedLagrangianCosts, states, actions, parameters)
 
     for t = 1:H
         J += λ[t]' * c[t]
-        nc = obj.constraint_data.constraints[t].nc 
-        for i = 1:nc 
+        num_constraint = obj.constraint_data.constraints[t].num_constraint 
+        for i = 1:num_constraint 
             if a[t][i] == 1
                 J += 0.5 * ρ[t][i] * c[t][i]^2.0
             end
@@ -98,8 +98,8 @@ function augmented_lagrangian_update!(obj::AugmentedLagrangianCosts;
     H = length(c)
 
     for t = 1:H
-        nc = cons[t].nc 
-        for i = 1:nc 
+        num_constraint = cons[t].num_constraint 
+        for i = 1:num_constraint 
             λ[t][i] += ρ[t][i] * c[t][i]
             if i in cons[t].indices_inequality
                 λ[t][i] = max(0.0, λ[t][i])

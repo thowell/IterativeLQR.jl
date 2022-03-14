@@ -10,9 +10,9 @@ end
 
 function constraint_data(model::Model, cons::Constraints) 
     H = length(cons)
-    c = [zeros(cons[t].nc) for t = 1:H]
-    cx = [zeros(cons[t].nc, t < H ? model[t].nx : model[H-1].ny) for t = 1:H]
-    cu = [zeros(cons[t].nc, model[t].nu) for t = 1:H-1]
+    c = [zeros(cons[t].num_constraint) for t = 1:H]
+    cx = [zeros(cons[t].num_constraint, t < H ? model[t].num_state : model[H-1].num_next_state) for t = 1:H]
+    cu = [zeros(cons[t].num_constraint, model[t].num_action) for t = 1:H-1]
     ConstraintsData(cons, c, cx, cu)
 end
 
@@ -27,9 +27,9 @@ function constraint_violation(constraint_data::ConstraintsData;
     H = length(constraints)
     max_violation = 0.0
     for t = 1:H
-        nc = constraints[t].nc 
+        num_constraint = constraints[t].num_constraint 
         ineq = constraints[t].indices_inequality
-        for i = 1:nc 
+        for i = 1:num_constraint 
             c = constraint_data.violations[t][i]
             cti = (i in ineq) ? max(0.0, c) : abs(c)
             max_violation = max(max_violation, cti)

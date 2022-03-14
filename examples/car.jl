@@ -12,9 +12,9 @@ using Plots
 T = 51 
 
 # ## car 
-nx = 3
-nu = 2
-nw = 0 
+num_state = 3
+num_action = 2
+num_parameter = 0 
 
 function car(x, u, w)
     [u[1] * cos(x[3]); u[1] * sin(x[3]); u[2]]
@@ -26,7 +26,7 @@ function midpoint_explicit(x, u, w)
 end
 
 # ## model
-dyn = Dynamics(midpoint_explicit, nx, nu, nw)
+dyn = Dynamics(midpoint_explicit, num_state, num_action, num_parameter)
 model = [dyn for t = 1:T-1] 
 
 # ## initialization
@@ -35,19 +35,19 @@ xT = [1.0; 1.0; 0.0]
 
 # ## rollout
 ū = [1.0e-2 * [1.0; 0.1] for t = 1:T-1]
-w = [zeros(nw) for t = 1:T] 
+w = [zeros(num_parameter) for t = 1:T] 
 x̄ = rollout(model, x1, ū, w)
 
 # ## objective 
 ot = (x, u, w) -> 1.0 * dot(x - xT, x - xT) + 1.0e-2 * dot(u, u)
 oT = (x, u, w) -> 1000.0 * dot(x - xT, x - xT)
-ct = Cost(ot, nx, nu, nw)
-cT = Cost(oT, nx, 0, nw)
+ct = Cost(ot, num_state, num_action, num_parameter)
+cT = Cost(oT, num_state, 0, num_parameter)
 obj = [[ct for t = 1:T-1]..., cT]
 
 # ## constraints
-ul = -5.0 * ones(nu) 
-uu = 5.0 * ones(nu)
+ul = -5.0 * ones(num_action) 
+uu = 5.0 * ones(num_action)
 
 p_obs = [0.5; 0.5] 
 r_obs = 0.1
@@ -69,8 +69,8 @@ function terminal_con(x, u, w)
     ]
 end
 
-cont = Constraint(stage_con, nx, nu, indices_inequality=collect(1:5))
-conT = Constraint(terminal_con, nx, nu, indices_inequality=collect(3 .+ (1:1)))
+cont = Constraint(stage_con, num_state, num_action, indices_inequality=collect(1:5))
+conT = Constraint(terminal_con, num_state, num_action, indices_inequality=collect(3 .+ (1:1)))
 cons = [[cont for t = 1:T-1]..., conT] 
 
 # ## problem
