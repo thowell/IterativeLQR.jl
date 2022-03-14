@@ -5,14 +5,21 @@
 A Julia package for solving constrained trajectory optimization problems with iterative LQR (iLQR). 
 
 ```
-minimize        gT(xT; wT) + sum(gt(xt, ut; wt))
-x1:T, u1:T-1
-subject to      xt+1 = ft(xt, ut; wt) , t = 1,...,T-1 
-                x1 = x_init
-                ct(xt, ut; wt) {<,=} 0, t = 1,...,T
+minimize        cost_T(state_T; parameter_T) + sum(cost_t(state_t, action_t; parameter_t))
+states, actions
+subject to      state_t+1 = dynamics_t(state_t, action_t; parameter_t), t = 1,...,T-1 
+                state_1 = state_initial
+                constraint_t(state_t, action_t; parameter_t) {<,=} 0,   t = 1,...,T
 ```
 
-Fast and allocation-free gradients and Jacobians are automatically generated using [Symbolics.jl](https://github.com/JuliaSymbolics/Symbolics.jl) for user-provided costs, constraints, and dynamics. Constraints are handled using an augmented Lagrangian framework. 
+
+- Fast and allocation-free gradients and Jacobians are automatically generated using [Symbolics.jl](https://github.com/JuliaSymbolics/Symbolics.jl) for user-provided costs, constraints, and dynamics. 
+
+- Constraints are handled using an [augmented Lagrangian framework](https://en.wikipedia.org/wiki/Augmented_Lagrangian_method). 
+
+- Cost, dynamics, and constraints can have varying dimensions at each time step.
+
+- Parameters are exposed (and gradients wrt these values coming soon!)
 
 For more details, see our related paper: [ALTRO: A Fast Solver for Constrained Trajectory Optimization](http://roboticexplorationlab.org/papers/altro-iros.pdf)
 
@@ -75,3 +82,9 @@ solve!(prob)
 # solution
 x_sol, u_sol = get_trajectory(prob)
 ```
+## Examples 
+
+Please see the following for examples using this package: 
+
+- [Trajectory Optimization with Optimization-Based Dynamics](https://github.com/thowell/optimization_dynamics) 
+- [Dojo: A Differentiable Simulator for Robotics](https://github.com/dojo-sim/Dojo.jl)
