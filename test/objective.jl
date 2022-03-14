@@ -11,7 +11,7 @@
 
     J = [0.0]
     grad = zeros((T - 1) * (nx + nu) + nx)
-    idx_xu = [collect((t - 1) * (nx + nu) .+ (1:(nx + (t == T ? 0 : nu)))) for t = 1:T]
+    indices_stateu = [collect((t - 1) * (nx + nu) .+ (1:(nx + (t == T ? 0 : nu)))) for t = 1:T]
     x1 = ones(nx) 
     u1 = ones(nu)
     w1 = zeros(nw) 
@@ -20,22 +20,22 @@
     W = [w1 for t = 1:T]
 
     ct.val(ct.val_cache, x1, u1, w1)
-    ct.gradx(ct.gradx_cache, x1, u1, w1)
-    ct.gradu(ct.gradu_cache, x1, u1, w1)
+    ct.gradient_state(ct.gradient_state_cache, x1, u1, w1)
+    ct.gradient_action(ct.gradient_action_cache, x1, u1, w1)
 
     @test ct.val_cache[1] ≈ ot(x1, u1, w1)
-    @test norm(ct.gradx_cache - 2.0 * x1) < 1.0e-8
-    @test norm(ct.gradu_cache - 0.2 * u1) < 1.0e-8
+    @test norm(ct.gradient_state_cache - 2.0 * x1) < 1.0e-8
+    @test norm(ct.gradient_action_cache - 0.2 * u1) < 1.0e-8
 
     cT.val(cT.val_cache, x1, u1, w1)
-    cT.gradx(cT.gradx_cache, x1, zeros(0), zeros(0))
+    cT.gradient_state(cT.gradient_state_cache, x1, zeros(0), zeros(0))
     @test cT.val_cache[1] ≈ oT(x1, u1, w1)
-    @test norm(cT.gradx_cache - 20.0 * x1) < 1.0e-8
+    @test norm(cT.gradient_state_cache - 20.0 * x1) < 1.0e-8
 
     @test IterativeLQR.cost(obj, X, U, X) - sum([ot(X[t], U[t], W[t]) for t = 1:T-1]) - oT(X[T], U[T], W[T]) ≈ 0.0
-    gradx = [zeros(nx) for t = 1:T]
-    gradu = [zeros(nu) for t = 1:T-1]
-    IterativeLQR.cost_gradient!(gradx, gradu, obj, X, U, W) 
-    grad = vcat([[gradx[t]; gradu[t]] for t = 1:T-1]..., gradx[T]...)
+    gradient_state = [zeros(nx) for t = 1:T]
+    gradient_action = [zeros(nu) for t = 1:T-1]
+    IterativeLQR.cost_gradient!(gradient_state, gradient_action, obj, X, U, W) 
+    grad = vcat([[gradient_state[t]; gradient_action[t]] for t = 1:T-1]..., gradient_state[T]...)
     @test norm(grad - vcat([[2.0 * x1; 0.2 * u1] for t = 1:T-1]..., 20.0 * x1)) < 1.0e-8
 end

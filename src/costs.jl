@@ -1,17 +1,17 @@
 struct Cost{T}
     #TODO: types for methods
     val
-    gradx 
-    gradu
-    hessxx 
-    hessuu 
-    hessux
+    gradient_state 
+    gradient_action
+    hessian_state_state 
+    hessian_action_action 
+    hessian_action_state
     val_cache::Vector{T}
-    gradx_cache::Vector{T}
-    gradu_cache::Vector{T}
-    hessxx_cache::Matrix{T}
-    hessuu_cache::Matrix{T}
-    hessux_cache::Matrix{T}
+    gradient_state_cache::Vector{T}
+    gradient_action_cache::Vector{T}
+    hessian_state_state_cache::Matrix{T}
+    hessian_action_action_cache::Matrix{T}
+    hessian_action_state_cache::Matrix{T}
 end
 
 function Cost(f::Function, nx::Int, nu::Int; nw::Int=0)
@@ -19,22 +19,22 @@ function Cost(f::Function, nx::Int, nu::Int; nw::Int=0)
     @variables x[1:nx], u[1:nu], w[1:nw]
     
     val = f(x, u, w)
-    gradx = Symbolics.gradient(val, x)
-    gradu = Symbolics.gradient(val, u) 
-    hessxx = Symbolics.jacobian(gradx, x) 
-    hessuu = Symbolics.jacobian(gradu, u) 
-    hessux = Symbolics.jacobian(gradu, x) 
+    gradient_state = Symbolics.gradient(val, x)
+    gradient_action = Symbolics.gradient(val, u) 
+    hessian_state_state = Symbolics.jacobian(gradient_state, x) 
+    hessian_action_action = Symbolics.jacobian(gradient_action, u) 
+    hessian_action_state = Symbolics.jacobian(gradient_action, x) 
 
     val_func = eval(Symbolics.build_function([val], x, u, w)[2])
-    gradx_func = eval(Symbolics.build_function(gradx, x, u, w)[2])
-    gradu_func = eval(Symbolics.build_function(gradu, x, u, w)[2])
-    hessxx_func = eval(Symbolics.build_function(hessxx, x, u, w)[2])
-    hessuu_func = eval(Symbolics.build_function(hessuu, x, u, w)[2])
-    hessux_func = eval(Symbolics.build_function(hessux, x, u, w)[2])  
+    gradient_state_func = eval(Symbolics.build_function(gradient_state, x, u, w)[2])
+    gradient_action_func = eval(Symbolics.build_function(gradient_action, x, u, w)[2])
+    hessian_state_state_func = eval(Symbolics.build_function(hessian_state_state, x, u, w)[2])
+    hessian_action_action_func = eval(Symbolics.build_function(hessian_action_action, x, u, w)[2])
+    hessian_action_state_func = eval(Symbolics.build_function(hessian_action_state, x, u, w)[2])  
 
     return Cost(val_func, 
-        gradx_func, gradu_func, 
-        hessxx_func, hessuu_func, hessux_func,
+        gradient_state_func, gradient_action_func, 
+        hessian_state_state_func, hessian_action_action_func, hessian_action_state_func,
         zeros(1), 
         zeros(nx), zeros(nu), 
         zeros(nx, nx), zeros(nu, nu), zeros(nu, nx))
@@ -42,40 +42,40 @@ end
 
 Objective{T} = Vector{Cost{T}} where T
 
-function cost(obj::Objective, x, u, w) 
+function cost(costs::Vector{Cost{T}}, states, actions, parameters) where T
     J = 0.0
-    for (t, cost) in enumerate(obj)
-        cost.val(cost.val_cache, x[t], u[t], w[t])
+    for (t, cost) in enumerate(costs)
+        cost.val(cost.val_cache, states[t], actions[t], parameters[t])
         J += cost.val_cache[1]
     end
     return J 
 end
 
-function cost_gradient!(gradx, gradu, obj::Objective, x, u, w)
-    T = length(obj)
-    for (t, cost) in enumerate(obj)
-        cost.gradx(cost.gradx_cache, x[t], u[t], w[t])
-        @views gradx[t] .= cost.gradx_cache
-        fill!(cost.gradx_cache, 0.0) # TODO: confirm this is necessary
-        t == T && continue
-        cost.gradu(cost.gradu_cache, x[t], u[t], w[t])
-        @views gradu[t] .= cost.gradu_cache
-        fill!(cost.gradu_cache, 0.0) # TODO: confirm this is necessary
+function cost_gradient!(gradient_states, gradient_actions, costs::Vector{Cost{T}}, states, actions, parameters) where T
+    H = length(costs)
+    for (t, cost) in enumerate(costs)
+        cost.gradient_state(cost.gradient_state_cache, states[t], actions[t], parameters[t])
+        @views gradient_states[t] .= cost.gradient_state_cache
+        fill!(cost.gradient_state_cache, 0.0) # TODO: confirm this is necessary
+        t == H && continue
+        cost.gradient_action(cost.gradient_action_cache, states[t], actions[t], parameters[t])
+        @views gradient_actions[t] .= cost.gradient_action_cache
+        fill!(cost.gradient_action_cache, 0.0) # TODO: confirm this is necessary
     end
 end
 
-function cost_hessian!(hessxx, hessuu, hessux, obj::Objective, x, u, w)
-    T = length(obj) 
-    for (t, cost) in enumerate(obj)
-        cost.hessxx(cost.hessxx_cache, x[t], u[t], w[t])
-        @views hessxx[t] .+= cost.hessxx_cache
-        fill!(cost.hessxx_cache, 0.0) # TODO: confirm this is necessary
-        t == T && continue
-        cost.hessuu(cost.hessuu_cache, x[t], u[t], w[t])
-        cost.hessux(cost.hessux_cache, x[t], u[t], w[t])
-        @views hessuu[t] .+= cost.hessuu_cache
-        @views hessux[t] .+= cost.hessux_cache
-        fill!(cost.hessuu_cache, 0.0) # TODO: confirm this is necessary
-        fill!(cost.hessux_cache, 0.0) # TODO: confirm this is necessary
+function cost_hessian!(hessian_state_state, hessian_action_action, hessian_action_state, costs::Vector{Cost{T}}, states, actions, parameters) where T
+    H = length(costs) 
+    for (t, cost) in enumerate(costs)
+        cost.hessian_state_state(cost.hessian_state_state_cache, states[t], actions[t], parameters[t])
+        @views hessian_state_state[t] .+= cost.hessian_state_state_cache
+        fill!(cost.hessian_state_state_cache, 0.0) # TODO: confirm this is necessary
+        t == H && continue
+        cost.hessian_action_action(cost.hessian_action_action_cache, states[t], actions[t], parameters[t])
+        cost.hessian_action_state(cost.hessian_action_state_cache, states[t], actions[t], parameters[t])
+        @views hessian_action_action[t] .+= cost.hessian_action_action_cache
+        @views hessian_action_state[t]  .+= cost.hessian_action_state_cache
+        fill!(cost.hessian_action_action_cache, 0.0) # TODO: confirm this is necessary
+        fill!(cost.hessian_action_state_cache, 0.0) # TODO: confirm this is necessary
     end
 end

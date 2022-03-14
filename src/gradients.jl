@@ -1,43 +1,49 @@
-function gradients!(dynamics::Model, data::ProblemData; mode=:nominal)
-    x, u, w = trajectories(data, mode=mode)
+function gradients!(dynamics::Model, data::ProblemData; 
+        mode=:nominal)
+    x, u, w = trajectories(data, 
+        mode=mode)
     jx = data.model.jacobian_state
     ju = data.model.jacobian_action
     jacobian!(jx, ju, dynamics, x, u, w)
 end
 
-function gradients!(obj::Objective, data::ProblemData; mode=:nominal)
-    x, u, w = trajectories(data, mode=mode)
-    gradx = data.objective.gradient_state
-    gradu = data.objective.gradient_action
-    hessxx = data.objective.hessian_state_state
-    hessuu = data.objective.hessian_action_action
-    hessux = data.objective.hessian_action_state
-    cost_gradient!(gradx, gradu, obj, x, u, w)
-    cost_hessian!(hessxx, hessuu, hessux, obj, x, u, w) 
+function gradients!(obj::Objective, data::ProblemData; 
+        mode=:nominal)
+    x, u, w = trajectories(data, 
+        mode=mode)
+    gx = data.objective.gradient_state
+    gu = data.objective.gradient_action
+    gxx = data.objective.hessian_state_state
+    guu = data.objective.hessian_action_action
+    gux = data.objective.hessian_action_state
+    cost_gradient!(gx, gu, obj, x, u, w)
+    cost_hessian!(gxx, guu, gux, obj, x, u, w) 
 end
 
-function gradients!(obj::AugmentedLagrangianCosts, data::ProblemData; mode=:nominal)
+function gradients!(obj::AugmentedLagrangianCosts, data::ProblemData; 
+    mode=:nominal)
     # objective 
-    gradient_state = data.objective.gradient_state
-    gradient_action = data.objective.gradient_action
-    hessian_state_state = data.objective.hessian_state_state
-    hessian_action_action = data.objective.hessian_action_action
-    hessian_action_state = data.objective.hessian_action_state
+    gx = data.objective.gradient_state
+    gu = data.objective.gradient_action
+    gxx = data.objective.hessian_state_state
+    guu = data.objective.hessian_action_action
+    gux = data.objective.hessian_action_state
 
     # constraints
-    constraints = obj.constraint_data.constraints
-    violations = obj.constraint_data.violations
-    jacobian_state = obj.constraint_data.jacobian_state
-    jacobian_action = obj.constraint_data.jacobian_action
-    constraint_penalty = obj.constraint_penalty
-    constraint_dual = obj.constraint_dual
-    active_set = obj.active_set
-    constraint_penalty_matrix = obj.constraint_penalty_matrix
-    constraint_tmp = obj.constraint_tmp 
-    constraint_jacobian_state_tmp = obj.constraint_jacobian_state_tmp 
-    constraint_jacobian_action_tmp = obj.constraint_jacobian_action_tmp
+    cons = obj.constraint_data.constraints
+    c = obj.constraint_data.violations
+    cx = obj.constraint_data.jacobian_state
+    cu = obj.constraint_data.jacobian_action
+    ρ = obj.constraint_penalty
+    λ = obj.constraint_dual
+    a = obj.active_set
+    Iρ = obj.constraint_penalty_matrix
+    c_tmp = obj.constraint_tmp 
+    cx_tmp = obj.constraint_jacobian_state_tmp 
+    cu_tmp = obj.constraint_jacobian_action_tmp
 
-    T = length(obj)
+    # horizon
+    H = length(obj)
 
     # derivatives
     gradients!(obj.costs, data, 
@@ -45,42 +51,42 @@ function gradients!(obj::AugmentedLagrangianCosts, data::ProblemData; mode=:nomi
     gradients!(obj.constraint_data, data, 
         mode=mode)
 
-    for t = 1:T
-        nc = constraints[t].nc
+    for t = 1:H
+        nc = cons[t].nc
         for i = 1:nc 
-            constraint_penalty_matrix[t][i, i] = constraint_penalty[t][i] * active_set[t][i]
+            Iρ[t][i, i] = ρ[t][i] * a[t][i]
         end
-        constraint_tmp[t] .= constraint_dual[t] 
+        c_tmp[t] .= λ[t] 
 
         # gradient_state
-        mul!(constraint_tmp[t], constraint_penalty_matrix[t], violations[t], 1.0, 1.0)
-        mul!(gradient_state[t], transpose(jacobian_state[t]), constraint_tmp[t], 1.0, 1.0)
+        mul!(c_tmp[t], Iρ[t], c[t], 1.0, 1.0)
+        mul!(gx[t], transpose(cx[t]), c_tmp[t], 1.0, 1.0)
 
         # hessian_state_state 
-        mul!(constraint_jacobian_state_tmp[t], constraint_penalty_matrix[t], jacobian_state[t])
-        mul!(hessian_state_state[t], transpose(jacobian_state[t]), constraint_jacobian_state_tmp[t], 1.0, 1.0)
+        mul!(cx_tmp[t], Iρ[t], cx[t])
+        mul!(gxx[t], transpose(cx[t]), cx_tmp[t], 1.0, 1.0)
 
-        t == T && continue 
+        t == H && continue 
 
         # gradient_action 
-        mul!(gradient_action[t], transpose(jacobian_action[t]), constraint_tmp[t], 1.0, 1.0) 
+        mul!(gu[t], transpose(cu[t]), c_tmp[t], 1.0, 1.0) 
 
         # hessian_action_action 
-        mul!(constraint_jacobian_action_tmp[t], constraint_penalty_matrix[t], jacobian_action[t]) 
-        mul!(hessian_action_action[t], transpose(jacobian_action[t]), constraint_jacobian_action_tmp[t], 1.0, 1.0) 
+        mul!(cu_tmp[t], Iρ[t], cu[t]) 
+        mul!(guu[t], transpose(cu[t]), cu_tmp[t], 1.0, 1.0) 
 
         # hessian_action_state 
-        mul!(hessian_action_state[t], transpose(jacobian_action[t]), constraint_jacobian_state_tmp[t], 1.0, 1.0)
+        mul!(gux[t], transpose(cu[t]), cx_tmp[t], 1.0, 1.0)
     end
 end
 
-function gradients!(constraint_data::ConstraintsData, problem::ProblemData;
+function gradients!(constraints_data::ConstraintsData, problem::ProblemData;
     mode=:nominal)
     x, u, w = trajectories(problem, 
         mode=mode)
-    cx = constraint_data.jacobian_state
-    cu = constraint_data.jacobian_action
-    jacobian!(cx, cu, constraint_data.constraints, x, u, w)
+    cx = constraints_data.jacobian_state
+    cu = constraints_data.jacobian_action
+    jacobian!(cx, cu, constraints_data.constraints, x, u, w)
 end
 
 function gradients!(problem::ProblemData; 

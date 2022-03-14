@@ -1,11 +1,16 @@
 function backward_pass!(policy::PolicyData, problem::ProblemData; 
     mode=:nominal)
 
-    T = length(problem.x)
+    # horizon 
+    H = length(problem.states)
+
+    # gradients 
     fx = problem.model.jacobian_state
     fu = problem.model.jacobian_action
     gx = problem.objective.gradient_state
     gu = problem.objective.gradient_action
+
+    # Hessians
     gxx = problem.objective.hessian_state_state
     guu = problem.objective.hessian_action_action
     gux = problem.objective.hessian_action_state
@@ -34,7 +39,7 @@ function backward_pass!(policy::PolicyData, problem::ProblemData;
     P[T] .= gxx[T]
     p[T] .=  gx[T]
 
-    for t = T-1:-1:1
+    for t = H-1:-1:1
         # Qx[t] .= gx[t] + fx[t]' * p[t+1]
         mul!(Qx[t], transpose(fx[t]), p[t+1])
         Qx[t] .+= gx[t]

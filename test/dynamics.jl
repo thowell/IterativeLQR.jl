@@ -30,11 +30,11 @@
 
     dyn.val(dyn.val_cache, x1, u1, w1) 
     @test norm(dyn.val_cache - euler_explicit(x1, u1, w1)) < 1.0e-8
-    dyn.jacx(dyn.jacx_cache, x1, u1, w1) 
-    dyn.jacu(dyn.jacu_cache, x1, u1, w1) 
+    dyn.jacobian_state(dyn.jacobian_state_cache, x1, u1, w1) 
+    dyn.jacobian_action(dyn.jacobian_action_cache, x1, u1, w1) 
 
     jac_fd = ForwardDiff.jacobian(a -> euler_explicit(a[1:nx], a[nx .+ (1:nu)], w1), [x1; u1])
-    @test norm([dyn.jacx_cache dyn.jacu_cache] - jac_fd) < 1.0e-8
+    @test norm([dyn.jacobian_state_cache dyn.jacobian_action_cache] - jac_fd) < 1.0e-8
 
     d = [zeros(nx) for t = 1:T-1]
     for (t, dyn) in enumerate(model) 

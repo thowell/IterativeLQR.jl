@@ -9,10 +9,10 @@ struct ConstraintsData{T,C,CX,CU}
 end
 
 function constraint_data(model::Model, cons::Constraints) 
-    T = length(cons)
-    c = [zeros(cons[t].nc) for t = 1:T]
-    cx = [zeros(cons[t].nc, t < T ? model[t].nx : model[T-1].ny) for t = 1:T]
-    cu = [zeros(cons[t].nc, model[t].nu) for t = 1:T-1]
+    H = length(cons)
+    c = [zeros(cons[t].nc) for t = 1:H]
+    cx = [zeros(cons[t].nc, t < H ? model[t].nx : model[H-1].ny) for t = 1:H]
+    cu = [zeros(cons[t].nc, model[t].nu) for t = 1:H-1]
     ConstraintsData(cons, c, cx, cu)
 end
 
@@ -24,17 +24,18 @@ function constraint_violation(constraint_data::ConstraintsData;
     norm_type=Inf)
 
     constraints = constraint_data.constraints
-    T = length(constraints)
-    c_max = 0.0
-    for t = 1:T
+    H = length(constraints)
+    max_violation = 0.0
+    for t = 1:H
         nc = constraints[t].nc 
-        ineq = constraints[t].idx_ineq
+        ineq = constraints[t].indices_inequality
         for i = 1:nc 
-            cti = (i in ineq) ? max(0.0, constraint_data.violations[t][i]) : abs(constraint_data.violations[t][i])
-            c_max = max(c_max, cti)
+            c = constraint_data.violations[t][i]
+            cti = (i in ineq) ? max(0.0, c) : abs(c)
+            max_violation = max(max_violation, cti)
         end
     end
-    return c_max
+    return max_violation
 end
 
 function constraint_violation(constraint_data::ConstraintsData, x, u, w; 

@@ -13,8 +13,8 @@
     ct = (x, u, w) -> [-ones(nx) - x; x - ones(nx)]
     cT = (x, u, w) -> x
 
-    cont = Constraint(ct, nx, nu, idx_ineq=collect(1:2nx), nw=nw)
-    conT = Constraint(cT, nx, 0, idx_ineq=collect(1:nx), nw=nw)
+    cont = Constraint(ct, nx, nu, indices_inequality=collect(1:2nx), nw=nw)
+    conT = Constraint(cT, nx, 0, indices_inequality=collect(1:nx), nw=nw)
 
     cons = [[cont for t = 1:T-1]..., conT]
     

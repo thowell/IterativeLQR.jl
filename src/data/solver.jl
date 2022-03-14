@@ -2,69 +2,69 @@
     Solver Data
 """
 struct SolverData{T}
-    obj::Vector{T}              # objective value
-    gradient::Vector{T}         # Lagrangian gradient
-    c_max::Vector{T}            # maximum constraint violation
+    objective::Vector{T}                # objective value
+    gradient::Vector{T}                 # Lagrangian gradient
+    max_violation::Vector{T}            # maximum constraint violation
 
-    idx_x::Vector{Vector{Int}}  # indices for state trajectory
-    idx_u::Vector{Vector{Int}}  # indices for control trajectory
+    indices_state::Vector{Vector{Int}}  # indices for state trajectory
+    indices_action::Vector{Vector{Int}} # indices for control trajectory
 
     step_size::Vector{T}                # step length
-    status::Vector{Bool}        # solver status
+    status::Vector{Bool}                # solver status
 
-    iter::Vector{Int}
+    iterations::Vector{Int}
 
-    cache::Dict{Symbol,Vector{T}}  # solver stats
+    cache::Dict{Symbol,Vector{T}}       # solver stats
 end
 
-function solver_data(model::Model{T}; 
+function solver_data(dynamics::Vector{Dynamics{T}}; 
     max_cache=1000) where T
 
     # indices x and u
-    idx_x = Vector{Int}[]
-    idx_u = Vector{Int}[] 
+    indices_state = Vector{Int}[]
+    indices_action = Vector{Int}[] 
     n_sum = 0 
     m_sum = 0 
-    n_total = sum([d.nx for d in model]) + model[end].ny
-    for d in model
-        push!(idx_x, collect(n_sum .+ (1:d.nx))) 
-        push!(idx_u, collect(n_total + m_sum .+ (1:d.nu)))
+    n_total = sum([d.nx for d in dynamics]) + dynamics[end].ny
+    for d in dynamics
+        push!(indices_state, collect(n_sum .+ (1:d.nx))) 
+        push!(indices_action, collect(n_total + m_sum .+ (1:d.nu)))
         n_sum += d.nx 
         m_sum += d.nu 
     end
-    push!(idx_x, collect(n_sum .+ (1:model[end].ny)))
+    push!(indices_state, collect(n_sum .+ (1:dynamics[end].ny)))
 
-    obj = [Inf]
-    c_max = [0.0]
+    objective = [Inf]
+    max_violation = [0.0]
     step_size = [1.0]
-    gradient = zeros(num_var(model))
-    cache = Dict(:obj => zeros(max_cache), 
-                :grad => zeros(max_cache), 
-                :c_max => zeros(max_cache), 
-                :step_size => zeros(max_cache))
+    gradient = zeros(num_var(dynamics))
+    cache = Dict(:objective     => zeros(max_cache), 
+                 :gradient      => zeros(max_cache), 
+                 :max_violation => zeros(max_cache), 
+                 :step_size     => zeros(max_cache))
 
-    SolverData(obj, gradient, c_max, idx_x, idx_u, step_size, [false], [0], cache)
+    SolverData(objective, gradient, max_violation, indices_state, indices_action, step_size, [false], [0], cache)
 end
 
 function reset!(data::SolverData) 
-    fill!(data.obj, 0.0) 
+    fill!(data.objective, 0.0) 
     fill!(data.gradient, 0.0)
-    fill!(data.c_max, 0.0) 
-    fill!(data.cache[:obj], 0.0) 
-    fill!(data.cache[:grad], 0.0) 
-    fill!(data.cache[:c_max], 0.0) 
+    fill!(data.max_violation, 0.0) 
+    fill!(data.cache[:objective], 0.0) 
+    fill!(data.cache[:gradient], 0.0) 
+    fill!(data.cache[:max_violation], 0.0) 
     fill!(data.cache[:step_size], 0.0) 
     data.status[1] = false
-    data.iter[1] = 0
+    data.iterations[1] = 0
 end
 
 # TODO: fix iter
 function cache!(data::SolverData)
     iter = 1 #data.cache[:iter] 
     # (iter > length(data[:obj])) && (@warn "solver data cache exceeded")
-    data.cache[:obj][iter] = data.obj
+    data.cache[:objective][iter] = data.objective[1]
     data.cache[:gradient][iter] = data.gradient
-    data.cache[:c_max][iter] = data.c_max
+    data.cache[:max_violation][iter] = data.max_violation
     data.cache[:step_size][iter] = data.step_size
     return nothing
 end

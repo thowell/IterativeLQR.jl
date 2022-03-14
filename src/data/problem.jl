@@ -2,15 +2,15 @@
 
 mutable struct ProblemData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
     # current trajectory
-    x::Vector{X}
-    u::Vector{U}
+    states::Vector{X}
+    actions::Vector{U}
 
     # disturbance trajectory
-    w::Vector{D}
+    parameters::Vector{D}
 
     # nominal trajectory
-    x̄::Vector{X}
-    ū::Vector{U}
+    nominal_states::Vector{X}
+    nominal_actions::Vector{U}
 
     # model data
     model::ModelData{T,FX,FU,FW}
@@ -18,29 +18,29 @@ mutable struct ProblemData{T,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
     # objective data
     objective::ObjectiveData{O,OX,OU,OXX,OUU,OUX}
 
-    # z = (x1...,xT,u1,...,uT-1) | Δz = (Δx1...,ΔxT,Δu1,...,ΔuT-1)
-    z::Vector{T}
+    # trajectory: z = (x1,..., xT, u1,..., uT-1) | Δz = (Δx1..., ΔxT, Δu1,..., ΔuT-1)
+    trajectory::Vector{T}
 end
 
 function problem_data(dynamics, costs; 
-    w=[[zeros(d.nw) for d in dynamics]..., zeros(0)])
+    parameters=[[zeros(d.nw) for d in dynamics]..., zeros(0)])
 
-    length(w) == length(dynamics) && (w = [w..., zeros(0)])
-    @assert length(dynamics) + 1 == length(w)
+    length(parameters) == length(dynamics) && (parameters = [parameters..., zeros(0)])
+    @assert length(dynamics) + 1 == length(parameters)
     @assert length(dynamics) + 1 == length(costs)
 
-	x = [[zeros(d.nx) for d in dynamics]..., 
+	states = [[zeros(d.nx) for d in dynamics]..., 
             zeros(dynamics[end].ny)]
-    u = [[zeros(d.nu) for d in dynamics]..., zeros(0)]
+    actions = [[zeros(d.nu) for d in dynamics]..., zeros(0)]
 
-    x̄ = [[zeros(d.nx) for d in dynamics]..., 
+    nominal_states = [[zeros(d.nx) for d in dynamics]..., 
             zeros(dynamics[end].ny)]
-    ū = [[zeros(d.nu) for d in dynamics]..., zeros(0)]
+    nominal_actions = [[zeros(d.nu) for d in dynamics]..., zeros(0)]
 
     model = model_data(dynamics)
-    obj = objective_data(dynamics, costs)
+    objective = objective_data(dynamics, costs)
 
-    z = zeros(num_var(dynamics))
+    trajectory = zeros(num_var(dynamics))
 
-    ProblemData(x, u, w, x̄, ū, model, obj, z)
+    ProblemData(states, actions, parameters, nominal_states, nominal_actions, model, objective, trajectory)
 end

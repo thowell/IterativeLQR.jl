@@ -1,64 +1,62 @@
-function cost(data::ProblemData; 
+function cost(problem::ProblemData; 
     mode=:nominal)
 
     if mode == :nominal
-        return cost(data.objective.costs, data.x̄, data.ū, data.w)
+        return cost(problem.objective.costs, problem.nominal_states, problem.nominal_actions, problem.parameters)
     elseif mode == :current
-        return cost(data.objective.costs, data.x, data.u, data.w)
+        return cost(problem.objective.costs, problem.states, problem.actions, problem.parameters)
     else 
         return 0.0 
     end
 end
 
-function cost!(solver_data::SolverData, problem::ProblemData; 
+function cost!(data::SolverData, problem::ProblemData; 
     mode=:nominal)
 
 	if mode == :nominal
-		solver_data.obj[1] = cost(problem.objective.costs, problem.x̄, problem.ū, problem.w)
+		data.objective[1] = cost(problem.objective.costs, problem.nominal_states, problem.nominal_actions, problem.parameters)
 	elseif mode == :current
-		solver_data.obj[1] = cost(problem.objective.costs, problem.x, problem.u, problem.w)
+		data.objective[1] = cost(problem.objective.costs, problem.states, problem.actions, problem.parameters)
 	end
 
 	if problem.objective.costs isa AugmentedLagrangianCosts
-		solver_data.c_max[1] = constraint_violation(
+		data.max_violation[1] = constraint_violation(
             problem.objective.costs.constraint_data,
-			problem.x, problem.u, problem.w,
+			problem.states, problem.actions, problem.parameters,
 			norm_type = Inf)
 	end
 
-	return solver_data.obj
+	return data.objective
 end
 
 function update_nominal_trajectory!(data::ProblemData) 
-    T = length(data.x) 
-    for t = 1:T 
-        data.x̄[t] .= data.x[t] 
-        t == T && continue 
-        data.ū[t] .= data.u[t] 
+    H = length(data.states) 
+    for t = 1:H 
+        data.nominal_states[t] .= data.states[t] 
+        t == H && continue 
+        data.nominal_actions[t] .= data.actions[t] 
     end 
 end
 
 #TODO: clean up
-function trajectory_sensitivities(problem::ProblemData, policy::PolicyData, solver_data::SolverData)
-    T = length(problem.x)
-    fill!(problem.z, 0.0)
-    for t = 1:T-1
-        zx = @views problem.z[solver_data.idx_x[t]]
-        zu = @views problem.z[solver_data.idx_u[t]]
-        zy = @views problem.z[solver_data.idx_x[t+1]]
+function trajectory_sensitivities(problem::ProblemData, policy::PolicyData, data::SolverData)
+    H = length(problem.states)
+    fill!(problem.trajectory, 0.0)
+    for t = 1:H-1
+        zx = @views problem.trajectory[data.indices_state[t]]
+        zu = @views problem.trajectory[data.indices_action[t]]
+        zy = @views problem.trajectory[data.indices_state[t+1]]
         zu .= policy.k[t] 
         mul!(zu, policy.K[t], zx, 1.0, 1.0)
         mul!(zy, problem.model.jacobian_action[t], zu)
         mul!(zy, problem.model.jacobian_state[t], zx, 1.0, 1.0)
-        # problem.z[solver_data.idx_u[t]] .= policy.K[t] * problem.z[solver_data.idx_x[t]] + policy.k[t]
-        # problem.z[solver_data.idx_x[t+1]] .= problem.model.jacobian_state[t] * problem.z[solver_data.idx_x[t]] + problem.model.jacobian_action[t] * problem.z[solver_data.idx_u[t]]
     end
 end
 
 function trajectories(problem::ProblemData; 
     mode=:nominal) 
-    x = mode == :nominal ? problem.x̄ : problem.x 
-    u = mode == :nominal ? problem.ū : problem.u 
-    w = problem.w
+    x = mode == :nominal ? problem.nominal_states : problem.states
+    u = mode == :nominal ? problem.nominal_actions : problem.actions
+    w = problem.parameters
     return x, u, w 
 end

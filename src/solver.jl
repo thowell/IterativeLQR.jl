@@ -8,60 +8,60 @@ mutable struct Solver{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
     options::Options{T}
 end
 
-function solver(model::Model{T}, obj::Objective{T}; 
-    w=[[zeros(d.nw) for d in model]..., zeros(0)],
+function solver(dynamics::Vector{Dynamics{T}}, obj::Objective{T}; 
+    parameters=[[zeros(d.nw) for d in dynamics]..., zeros(0)],
     options=Options{T}()) where T
 
 	# allocate policy data
-    policy = policy_data(model)
+    policy = policy_data(dynamics)
 
     # allocate problem data
-    problem = problem_data(model, obj, 
-        w=w)
+    problem = problem_data(dynamics, obj, 
+        parameters=parameters)
 
     # allocate solver data
-    data = solver_data(model)
+    data = solver_data(dynamics)
 
 	Solver(problem, policy, data, options)
 end
 
 
 function get_trajectory(solver::Solver)
-	return solver.problem.x̄, solver.problem.ū[1:end-1]
+	return solver.problem.nominal_states, solver.problem.nominal_actions[1:end-1]
 end
 
 function current_trajectory(solver::Solver)
-	return solver.problem.x, solver.problem.u[1:end-1]
+	return solver.problem.states, solver.problem.actions[1:end-1]
 end
 
-function solver(model::Model{T}, obj::Objective{T}, cons::Constraints{T};
-    w=[[zeros(d.nw) for d in model]..., zeros(0)],
+function solver(dynamics::Vector{Dynamics{T}}, costs::Vector{Cost{T}}, constraints::Constraints{T};
+    parameters=[[zeros(d.nw) for d in dynamics]..., zeros(0)],
     options=Options{T}()) where T
 
 	# augmented Lagrangian
-	obj_al = augmented_lagrangian(model, obj, cons)
+	objective_al = augmented_lagrangian(dynamics, costs, constraints)
 
     # allocate policy data  
-    policy = policy_data(model)
+    policy = policy_data(dynamics)
 
     # allocate model data
-    problem = problem_data(model, obj_al, 
-        w=w)
+    problem = problem_data(dynamics, objective_al, 
+        parameters=parameters)
 
     # allocate solver data
-    data = solver_data(model)
+    data = solver_data(dynamics)
 
 	Solver(problem, policy, data, options)
 end
 
-function initialize_controls!(solver::Solver, u) 
-    for (t, ut) in enumerate(u) 
-        solver.problem.ū[t] .= ut
+function initialize_controls!(solver::Solver, actions) 
+    for (t, ut) in enumerate(actions) 
+        solver.problem.nominal_actions[t] .= ut
     end 
 end
 
-function initialize_states!(solver::Solver, x) 
-    for (t, xt) in enumerate(x)
-        solver.problem.x̄[t] .= xt
+function initialize_states!(solver::Solver, states) 
+    for (t, xt) in enumerate(states)
+        solver.problem.nominal_states[t] .= xt
     end
 end

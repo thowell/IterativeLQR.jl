@@ -86,7 +86,7 @@
     # ## initialization
     x1 = [0.0; 0.0; 0.0; 0.0] 
     xT = [0.0; π; 0.0; 0.0]
-    ū = [1.0e-1 * randn(nu) for t = 1:T-1] 
+    ū = [1.0e-3 * randn(nu) for t = 1:T-1] 
     w = [zeros(nw) for t = 1:T]
     x̄ = rollout(model, x1, ū, w)
 
@@ -114,15 +114,15 @@
         max_dual_updates=10,
         initial_constraint_penalty=1.0,
         scaling_penalty=10.0)
-    prob = solver(model, obj, cons, options=options)
-    initialize_controls!(prob, ū) 
-    initialize_states!(prob, x̄)
+    s = solver(model, obj, cons, options=options)
+    initialize_controls!(s, ū) 
+    initialize_states!(s, x̄)
 
     # ## solve
-    solve!(prob)
+    solve!(s)
 
     # ## solution
-    x_sol, u_sol = get_trajectory(prob)
+    x_sol, u_sol = get_trajectory(s)
 
     @test norm(x_sol[T] - xT, Inf) < options.constraint_tolerance
 

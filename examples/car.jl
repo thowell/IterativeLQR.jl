@@ -69,8 +69,8 @@ function terminal_con(x, u, w)
     ]
 end
 
-cont = Constraint(stage_con, nx, nu, idx_ineq=collect(1:5))
-conT = Constraint(terminal_con, nx, nu, idx_ineq=collect(3 .+ (1:1)))
+cont = Constraint(stage_con, nx, nu, indices_inequality=collect(1:5))
+conT = Constraint(terminal_con, nx, nu, indices_inequality=collect(3 .+ (1:1)))
 cons = [[cont for t = 1:T-1]..., conT] 
 
 # ## problem
