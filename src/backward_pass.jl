@@ -1,33 +1,34 @@
-function backward_pass!(policy::PolicyData, problem::ProblemData; mode = :nominal)
+function backward_pass!(policy::PolicyData, problem::ProblemData; 
+    mode=:nominal)
 
     T = length(problem.x)
-    fx = problem.model.fx
-    fu = problem.model.fu
-    gx = problem.objective.gx
-    gu = problem.objective.gu
-    gxx = problem.objective.gxx
-    guu = problem.objective.guu
-    gux = problem.objective.gux
+    fx = problem.model.jacobian_state
+    fu = problem.model.jacobian_action
+    gx = problem.objective.gradient_state
+    gu = problem.objective.gradient_action
+    gxx = problem.objective.hessian_state_state
+    guu = problem.objective.hessian_action_action
+    gux = problem.objective.hessian_action_state
 
     # policy
     if mode == :nominal
         K = policy.K
         k = policy.k
     else
-        K = policy.K_cand
+        K = policy.K_candidate
         k = policy.k_cand
     end
 
     # value function approximation
-    P = policy.P
-    p = policy.p
+    P = policy.value.hessian
+    p = policy.value.gradient
 
     # state-action value function approximation
-    Qx = policy.Qx
-    Qu = policy.Qu
-    Qxx = policy.Qxx
-    Quu = policy.Quu
-    Qux = policy.Qux
+    Qx = policy.action_value.gradient_state
+    Qu = policy.action_value.gradient_action
+    Qxx = policy.action_value.hessian_state_state
+    Quu = policy.action_value.hessian_action_action
+    Qux = policy.action_value.hessian_action_state
 
     # terminal value function
     P[T] .= gxx[T]

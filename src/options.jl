@@ -1,15 +1,15 @@
 Base.@kwdef mutable struct Options{T} 
-    linesearch::Symbol=:armijo
-    max_iter::Int=100
-    max_al_iter::Int=10
-    α_min::T=1.0e-5
-    obj_tol::T=1.0e-3
-    grad_tol::T=1.0e-3
-    con_tol::T=5.0e-3
-    con_norm_type::T=Inf
-    ρ_init::T=1.0
-    ρ_scale::T=10.0
-    ρ_max::T=1.0e8
+    line_search::Symbol=:armijo
+    max_iterations::Int=100
+    max_dual_updates::Int=10
+    min_step_size::T=1.0e-5
+    objective_tolerance::T=1.0e-3
+    lagrangian_gradient_tolerance::T=1.0e-3
+    constraint_tolerance::T=5.0e-3
+    constraint_norm::T=Inf
+    initial_constraint_penalty::T=1.0
+    scaling_penalty::T=10.0
+    max_penalty::T=1.0e8
     reset_cache::Bool=false
     verbose=true
 end

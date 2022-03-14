@@ -19,12 +19,12 @@ function ilqr_solve!(solver::Solver)
         mode=:nominal)
 
     obj_prev = data.obj[1]
-    for i = 1:solver.options.max_iter
+    for i = 1:solver.options.max_iterations
         forward_pass!(policy, problem, data,
-            α_min=solver.options.α_min,
-            linesearch=solver.options.linesearch,
+            min_step_size=solver.options.min_step_size,
+            line_search=solver.options.line_search,
             verbose=solver.options.verbose)
-        if solver.options.linesearch != :none
+        if solver.options.line_search != :none
             gradients!(problem, 
                 mode=:nominal)
             backward_pass!(policy, problem, 
@@ -42,11 +42,11 @@ function ilqr_solve!(solver::Solver)
              cost:          $(data.obj[1])
 			 gradient_norm: $(gradient_norm)
 			 c_max:         $(data.c_max[1])
-			 α:             $(data.α[1])")
+			 step_size:             $(data.step_size[1])")
 
         # check convergence
-		gradient_norm < solver.options.grad_tol && break
-        abs(data.obj[1] - obj_prev) < solver.options.obj_tol ? break : (obj_prev = data.obj[1])
+		gradient_norm < solver.options.lagrangian_gradient_tolerance && break
+        abs(data.obj[1] - obj_prev) < solver.options.objective_tolerance ? break : (obj_prev = data.obj[1])
         !data.status[1] && break
     end
 
@@ -65,9 +65,9 @@ end
         https://web.stanford.edu/class/ee363/lectures/lqr-lagrange.pdf
 """
 function lagrangian_gradient!(data::SolverData, policy::PolicyData, problem::ProblemData)
-	p = policy.p
-    Qx = policy.Qx
-    Qu = policy.Qu
+	p = policy.value.gradient
+    Qx = policy.action_value.gradient_state
+    Qu = policy.action_value.gradient_action
     T = length(problem.x)
 
     for t = 1:T-1
@@ -94,16 +94,16 @@ function constrained_ilqr_solve!(solver::Solver)
     reset!(solver.data) 
 
     # reset duals 
-    for (t, λ) in enumerate(solver.problem.objective.costs.λ)
-        fill!(λ, 0.0)
+    for (t, constraint_dual) in enumerate(solver.problem.objective.costs.constraint_dual)
+        fill!(constraint_dual, 0.0)
 	end
 
 	# initialize penalty
-	for (t, ρ) in enumerate(solver.problem.objective.costs.ρ)
-        fill!(ρ, solver.options.ρ_init)
+	for (t, constraint_penalty) in enumerate(solver.problem.objective.costs.constraint_penalty)
+        fill!(constraint_penalty, solver.options.initial_constraint_penalty)
 	end
 
-	for i = 1:solver.options.max_al_iter
+	for i = 1:solver.options.max_dual_updates
 		solver.options.verbose && println("  al iter: $i")
 
 		# primal minimization
@@ -114,12 +114,12 @@ function constrained_ilqr_solve!(solver::Solver)
             mode=:nominal)
 		
         # constraint violation
-		solver.data.c_max[1] <= solver.options.con_tol && break
+		solver.data.c_max[1] <= solver.options.constraint_tolerance && break
 
         # dual ascent
 		augmented_lagrangian_update!(solver.problem.objective.costs,
-			s=solver.options.ρ_scale, 
-            max_penalty=solver.options.ρ_max)
+			scaling_penalty=solver.options.scaling_penalty, 
+            max_penalty=solver.options.max_penalty)
 	end
 
     return nothing

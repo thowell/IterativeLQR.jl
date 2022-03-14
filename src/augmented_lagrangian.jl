@@ -1,27 +1,34 @@
 mutable struct AugmentedLagrangianCosts{T,C,CX,CU}
     costs::Objective{T}
     constraint_data::ConstraintsData{T,C,CX,CU}
-    ρ::Vector{Vector{T}}               # penalty
-    λ::Vector{Vector{T}}               # dual estimates
-    a::Vector{Vector{Int}}             # active set
-    Iρ::Vector{Diagonal{T,Vector{T}}}
-    c_tmp::Vector{Vector{T}}
-    cx_tmp::Vector{Matrix{T}} 
-    cu_tmp::Vector{Matrix{T}}
+    constraint_penalty::Vector{Vector{T}} 
+    constraint_penalty_matrix::Vector{Diagonal{T,Vector{T}}}              
+    constraint_dual::Vector{Vector{T}}               
+    active_set::Vector{Vector{Int}}            
+    constraint_tmp::Vector{Vector{T}}
+    constraint_jacobian_state_tmp::Vector{Matrix{T}} 
+    constraint_jacobian_action_tmp::Vector{Matrix{T}}
 end
 
 function augmented_lagrangian(model::Model{T}, costs::Objective{T}, cons::Constraints{T}) where T
     H = length(model) + 1
-    ρ = [ones(c.nc) for c in cons]
-    λ = [zeros(c.nc) for c in cons]
-    a = [ones(Int, c.nc) for c in cons]
-    Iρ = [Diagonal(ones(c.nc)) for c in cons]
-    c_tmp = [zeros(c.nc) for c in cons]
-    cx_tmp = [zeros(c.nc, t < H ? model[t].nx : model[H-1].ny) for (t, c) in enumerate(cons)]
-    cu_tmp = [zeros(c.nc, t < H ? model[t].nu : 0) for (t, c) in enumerate(cons)]
+    constraint_penalty = [ones(c.nc) for c in cons]
+    constraint_dual = [zeros(c.nc) for c in cons]
+    active_set = [ones(Int, c.nc) for c in cons]
+    constraint_penalty_matrix = [Diagonal(ones(c.nc)) for c in cons]
+    constraint_tmp = [zeros(c.nc) for c in cons]
+    constraint_jacobian_state_tmp = [zeros(c.nc, t < H ? model[t].nx : model[H-1].ny) for (t, c) in enumerate(cons)]
+    constraint_jacobian_action_tmp = [zeros(c.nc, t < H ? model[t].nu : 0) for (t, c) in enumerate(cons)]
     data = constraint_data(model, cons)
-    AugmentedLagrangianCosts(costs, data, ρ, λ, a, Iρ, 
-        c_tmp, cx_tmp, cu_tmp)
+    AugmentedLagrangianCosts(costs, 
+        data, 
+        constraint_penalty,
+        constraint_penalty_matrix,  
+        constraint_dual, 
+        active_set, 
+        constraint_tmp, 
+        constraint_jacobian_state_tmp, 
+        constraint_jacobian_action_tmp)
 end
 
 function cost(obj::AugmentedLagrangianCosts, x, u, w)
@@ -29,60 +36,61 @@ function cost(obj::AugmentedLagrangianCosts, x, u, w)
     J = cost(obj.costs, x, u, w)
 
     # constraints
-    c = obj.constraint_data.c
-    ρ = obj.ρ
-    λ = obj.λ
-    a = obj.a
-    T = length(c)
+    violations = obj.constraint_data.violations
+    constraint_penalty = obj.constraint_penalty
+    constraint_dual = obj.constraint_dual
+    active_set = obj.active_set
+    T = length(violations)
 
     constraints!(obj.constraint_data, x, u, w)
-    active_set!(a, obj.constraint_data, λ)
+    active_set!(active_set, obj.constraint_data, constraint_dual)
 
     for t = 1:T
-        J += λ[t]' * c[t]
-        nc = obj.constraint_data.cons[t].nc 
+        J += constraint_dual[t]' * violations[t]
+        nc = obj.constraint_data.constraints[t].nc 
         for i = 1:nc 
-            if a[t][i] == 1
-                J += 0.5 * ρ[t][i] * c[t][i]^2.0
+            if active_set[t][i] == 1
+                J += 0.5 * constraint_penalty[t][i] * violations[t][i]^2.0
             end
         end
     end
     return J
 end
 
-function active_set!(a, constraint_data::ConstraintsData, λ)
-    c = constraint_data.c
-    T = length(c)
+function active_set!(active_set, constraint_data::ConstraintsData, constraint_dual)
+    violations = constraint_data.violations
+    T = length(violations)
 
     for t = 1:T
         # set all constraints active
-        fill!(a[t], 1)
+        fill!(active_set[t], 1)
 
         # check inequality constraints
-        for i in constraint_data.cons[t].idx_ineq
+        for i in constraint_data.constraints[t].idx_ineq
             # check active-set criteria
-            (c[t][i] < 0.0 && λ[t][i] == 0.0) && (a[t][i] = 0)
+            (violations[t][i] < 0.0 && constraint_dual[t][i] == 0.0) && (active_set[t][i] = 0)
         end
     end
 end
 
 function augmented_lagrangian_update!(obj::AugmentedLagrangianCosts;
-        s = 10.0, max_penalty = 1.0e12)
+        scaling_penalty=10.0, 
+        max_penalty=1.0e12)
     # constraints
-    c = obj.constraint_data.c
-    cons = obj.constraint_data.cons
-    ρ = obj.ρ
-    λ = obj.λ
-    T = length(c)
+    violations = obj.constraint_data.violations
+    constraints = obj.constraint_data.constraints
+    constraint_penalty = obj.constraint_penalty
+    constraint_dual = obj.constraint_dual
+    T = length(violations)
 
     for t = 1:T
-        nc = cons[t].nc 
+        nc = constraints[t].nc 
         for i = 1:nc 
-            λ[t][i] += ρ[t][i] * c[t][i]
-            if i in cons[t].idx_ineq
-                λ[t][i] = max(0.0, λ[t][i])
+            constraint_dual[t][i] += constraint_penalty[t][i] * violations[t][i]
+            if i in constraints[t].idx_ineq
+                constraint_dual[t][i] = max(0.0, constraint_dual[t][i])
             end
-            ρ[t][i] = min(s * ρ[t][i], max_penalty)
+            constraint_penalty[t][i] = min(scaling_penalty * constraint_penalty[t][i], max_penalty)
         end
     end
 end

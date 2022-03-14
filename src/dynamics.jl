@@ -48,8 +48,8 @@ end
 num_var(model::Model) = sum([d.nx + d.nu for d in model]) + model[end].ny
 
 # user-provided dynamics and gradients
-function Dynamics(f::Function, fx::Function, fu::Function, ny::Int, nx::Int, nu::Int, nw::Int=0)  
-    return Dynamics(f, fx, fu, 
+function Dynamics(f::Function, jacobian_state::Function, fu::Function, ny::Int, nx::Int, nu::Int, nw::Int=0)  
+    return Dynamics(f, jacobian_state, jacobian_action, 
                     ny, nx, nu, nw, 
                     zeros(ny), zeros(ny, nx), zeros(ny, nu))
 end

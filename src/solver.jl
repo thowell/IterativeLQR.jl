@@ -10,13 +10,14 @@ end
 
 function solver(model::Model{T}, obj::Objective{T}; 
     w=[[zeros(d.nw) for d in model]..., zeros(0)],
-    opts=Options{T}()) where T
+    options=Options{T}()) where T
 
 	# allocate policy data
     policy = policy_data(model)
 
     # allocate problem data
-    problem = problem_data(model, obj, w=w)
+    problem = problem_data(model, obj, 
+        w=w)
 
     # allocate solver data
     data = solver_data(model)
@@ -35,7 +36,7 @@ end
 
 function solver(model::Model{T}, obj::Objective{T}, cons::Constraints{T};
     w=[[zeros(d.nw) for d in model]..., zeros(0)],
-    opts=Options{T}()) where T
+    options=Options{T}()) where T
 
 	# augmented Lagrangian
 	obj_al = augmented_lagrangian(model, obj, cons)
@@ -44,12 +45,13 @@ function solver(model::Model{T}, obj::Objective{T}, cons::Constraints{T};
     policy = policy_data(model)
 
     # allocate model data
-    problem = problem_data(model, obj_al, w=w)
+    problem = problem_data(model, obj_al, 
+        w=w)
 
     # allocate solver data
     data = solver_data(model)
 
-	Solver(problem, policy, data, opts)
+	Solver(problem, policy, data, options)
 end
 
 function initialize_controls!(solver::Solver, u) 

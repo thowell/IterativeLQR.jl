@@ -1,4 +1,4 @@
-function rollout!(policy::PolicyData, problem::ProblemData; α=1.0)
+function rollout!(policy::PolicyData, problem::ProblemData; step_size=1.0)
     # model 
     model = problem.model.dynamics
 
@@ -18,9 +18,9 @@ function rollout!(policy::PolicyData, problem::ProblemData; α=1.0)
 
     # rollout
     for (t, dyn) in enumerate(model)
-        # u[t] .= ū[t] + K[t] * (x[t] - x̄[t]) + α * k[t]
+        # u[t] .= ū[t] + K[t] * (x[t] - x̄[t]) + step_size * k[t]
         u[t] .= k[t] 
-        u[t] .*= α 
+        u[t] .*= step_size 
         u[t] .+= ū[t] 
         mul!(u[t], K[t], x[t], 1.0, 1.0) 
         mul!(u[t], K[t], x̄[t], -1.0, 1.0)

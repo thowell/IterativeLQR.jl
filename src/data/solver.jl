@@ -9,7 +9,7 @@ struct SolverData{T}
     idx_x::Vector{Vector{Int}}  # indices for state trajectory
     idx_u::Vector{Vector{Int}}  # indices for control trajectory
 
-    α::Vector{T}                # step length
+    step_size::Vector{T}                # step length
     status::Vector{Bool}        # solver status
 
     iter::Vector{Int}
@@ -19,7 +19,7 @@ end
 
 function solver_data(model::Model{T}; 
     max_cache=1000) where T
-    
+
     # indices x and u
     idx_x = Vector{Int}[]
     idx_u = Vector{Int}[] 
@@ -36,14 +36,14 @@ function solver_data(model::Model{T};
 
     obj = [Inf]
     c_max = [0.0]
-    α = [1.0]
+    step_size = [1.0]
     gradient = zeros(num_var(model))
     cache = Dict(:obj => zeros(max_cache), 
                 :grad => zeros(max_cache), 
                 :c_max => zeros(max_cache), 
-                :α => zeros(max_cache))
+                :step_size => zeros(max_cache))
 
-    SolverData(obj, gradient, c_max, idx_x, idx_u, α, [false], [0], cache)
+    SolverData(obj, gradient, c_max, idx_x, idx_u, step_size, [false], [0], cache)
 end
 
 function reset!(data::SolverData) 
@@ -53,7 +53,7 @@ function reset!(data::SolverData)
     fill!(data.cache[:obj], 0.0) 
     fill!(data.cache[:grad], 0.0) 
     fill!(data.cache[:c_max], 0.0) 
-    fill!(data.cache[:α], 0.0) 
+    fill!(data.cache[:step_size], 0.0) 
     data.status[1] = false
     data.iter[1] = 0
 end
@@ -65,6 +65,6 @@ function cache!(data::SolverData)
     data.cache[:obj][iter] = data.obj
     data.cache[:gradient][iter] = data.gradient
     data.cache[:c_max][iter] = data.c_max
-    data.cache[:α][iter] = data.α
+    data.cache[:step_size][iter] = data.step_size
     return nothing
 end

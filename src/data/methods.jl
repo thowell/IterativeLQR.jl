@@ -1,4 +1,6 @@
-function cost(data::ProblemData; mode = :nominal)
+function cost(data::ProblemData; 
+    mode=:nominal)
+
     if mode == :nominal
         return cost(data.objective.costs, data.x̄, data.ū, data.w)
     elseif mode == :current
@@ -8,7 +10,9 @@ function cost(data::ProblemData; mode = :nominal)
     end
 end
 
-function cost!(solver_data::SolverData, problem::ProblemData; mode = :nominal)
+function cost!(solver_data::SolverData, problem::ProblemData; 
+    mode=:nominal)
+
 	if mode == :nominal
 		solver_data.obj[1] = cost(problem.objective.costs, problem.x̄, problem.ū, problem.w)
 	elseif mode == :current
@@ -35,7 +39,7 @@ function update_nominal_trajectory!(data::ProblemData)
 end
 
 #TODO: clean up
-function Δz!(problem::ProblemData, policy::PolicyData, solver_data::SolverData)
+function trajectory_sensitivities(problem::ProblemData, policy::PolicyData, solver_data::SolverData)
     T = length(problem.x)
     fill!(problem.z, 0.0)
     for t = 1:T-1
@@ -44,14 +48,15 @@ function Δz!(problem::ProblemData, policy::PolicyData, solver_data::SolverData)
         zy = @views problem.z[solver_data.idx_x[t+1]]
         zu .= policy.k[t] 
         mul!(zu, policy.K[t], zx, 1.0, 1.0)
-        mul!(zy, problem.model.fu[t], zu)
-        mul!(zy, problem.model.fx[t], zx, 1.0, 1.0)
+        mul!(zy, problem.model.jacobian_action[t], zu)
+        mul!(zy, problem.model.jacobian_state[t], zx, 1.0, 1.0)
         # problem.z[solver_data.idx_u[t]] .= policy.K[t] * problem.z[solver_data.idx_x[t]] + policy.k[t]
-        # problem.z[solver_data.idx_x[t+1]] .= problem.model.fx[t] * problem.z[solver_data.idx_x[t]] + problem.model.fu[t] * problem.z[solver_data.idx_u[t]]
+        # problem.z[solver_data.idx_x[t+1]] .= problem.model.jacobian_state[t] * problem.z[solver_data.idx_x[t]] + problem.model.jacobian_action[t] * problem.z[solver_data.idx_u[t]]
     end
 end
 
-function trajectories(problem::ProblemData; mode=:nominal) 
+function trajectories(problem::ProblemData; 
+    mode=:nominal) 
     x = mode == :nominal ? problem.x̄ : problem.x 
     u = mode == :nominal ? problem.ū : problem.u 
     w = problem.w

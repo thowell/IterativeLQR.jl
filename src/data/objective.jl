@@ -2,32 +2,32 @@
 
 struct ObjectiveData{C,X,U,XX,UU,UX}
     costs::C
-    gx::Vector{X}
-    gu::Vector{U}
-    gxx::Vector{XX}
-    guu::Vector{UU}
-    gux::Vector{UX}
+    gradient_state::Vector{X}
+    gradient_action::Vector{U}
+    hessian_state_state::Vector{XX}
+    hessian_action_action::Vector{UU}
+    hessian_action_state::Vector{UX}
 end
 
 function objective_data(model::Model, obj)
-	gx = [[zeros(d.nx) for d in model]..., 
+	gradient_state = [[zeros(d.nx) for d in model]..., 
         zeros(model[end].ny)]
-    gu = [zeros(d.nu) for d in model]
-    gxx = [[zeros(d.nx, d.nx) for d in model]..., 
+    gradient_action = [zeros(d.nu) for d in model]
+    hessian_state_state = [[zeros(d.nx, d.nx) for d in model]..., 
         zeros(model[end].ny, model[end].ny)]
-    guu = [zeros(d.nu, d.nu) for d in model]
-    gux = [zeros(d.nu, d.nx) for d in model]
-    ObjectiveData(obj, gx, gu, gxx, guu, gux)
+    hessian_action_action = [zeros(d.nu, d.nu) for d in model]
+    hessian_action_state = [zeros(d.nu, d.nx) for d in model]
+    ObjectiveData(obj, gradient_state, gradient_action, hessian_state_state, hessian_action_action, hessian_action_state)
 end
 
 function reset!(data::ObjectiveData) 
-    T = length(data.gx) 
+    T = length(data.gradient_state) 
     for t = 1:T 
-        fill!(data.gx[t], 0.0) 
-        fill!(data.gxx[t], 0.0) 
+        fill!(data.gradient_state[t], 0.0) 
+        fill!(data.hessian_state_state[t], 0.0) 
         t == T && continue
-        fill!(data.gu[t], 0.0)
-        fill!(data.guu[t], 0.0)
-        fill!(data.gux[t], 0.0)
+        fill!(data.gradient_action[t], 0.0)
+        fill!(data.hessian_action_action[t], 0.0)
+        fill!(data.hessian_action_state[t], 0.0)
     end 
 end
