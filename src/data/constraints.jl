@@ -8,12 +8,12 @@ struct ConstraintsData{T,C,CX,CU}
     jacobian_action::Vector{CU}
 end
 
-function constraint_data(model::Model, cons::Constraints) 
-    H = length(cons)
-    c = [zeros(cons[t].num_constraint) for t = 1:H]
-    cx = [zeros(cons[t].num_constraint, t < H ? model[t].num_state : model[H-1].num_next_state) for t = 1:H]
-    cu = [zeros(cons[t].num_constraint, model[t].num_action) for t = 1:H-1]
-    ConstraintsData(cons, c, cx, cu)
+function constraint_data(model::Model, constraints::Constraints) 
+    H = length(constraints)
+    c = [zeros(constraints[t].num_constraint) for t = 1:H]
+    cx = [zeros(constraints[t].num_constraint, t < H ? model[t].num_state : model[H-1].num_next_state) for t = 1:H]
+    cu = [zeros(constraints[t].num_constraint, model[t].num_action) for t = 1:H-1]
+    ConstraintsData(constraints, c, cx, cu)
 end
 
 function constraint!(constraint_data::ConstraintsData, x, u, w)

@@ -80,8 +80,8 @@
     end
 
     # ## model
-    dyn = Dynamics(midpoint_explicit, num_state, num_action, num_parameter=num_parameter)
-    model = [dyn for t = 1:T-1] 
+    dynamics = Dynamics(midpoint_explicit, num_state, num_action, num_parameter=num_parameter)
+    model = [dynamics for t = 1:T-1] 
 
     # ## initialization
     x1 = [0.0; 0.0; 0.0; 0.0] 
@@ -95,14 +95,14 @@
     oT = (x, u, w) -> 0.1 * dot(x[3:4], x[3:4])
     ct = Cost(ot, num_state, num_action, num_parameter=num_parameter)
     cT = Cost(oT, num_state, 0, num_parameter=num_parameter)
-    obj = [[ct for t = 1:T-1]..., cT]
+    objective = [[ct for t = 1:T-1]..., cT]
 
     # ## constraints
     goal(x, u, w) = x - xT
 
     cont = Constraint()
     conT = Constraint(goal, num_state, 0)
-    cons = [[cont for t = 1:T-1]..., conT] 
+    constraints = [[cont for t = 1:T-1]..., conT] 
 
     # ## problem
     options = Options(verbose=false,
@@ -115,7 +115,7 @@
         initial_constraint_penalty=1.0,
         scaling_penalty=10.0)
 
-    s = Solver(model, obj, cons, options=options)
+    s = Solver(model, objective, constraints, options=options)
 
     initialize_controls!(s, ū) 
     initialize_states!(s, x̄)

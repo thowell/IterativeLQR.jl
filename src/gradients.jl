@@ -7,7 +7,7 @@ function gradients!(dynamics::Model, data::ProblemData;
     jacobian!(jx, ju, dynamics, x, u, w)
 end
 
-function gradients!(obj::Objective, data::ProblemData; 
+function gradients!(objective::Objective, data::ProblemData; 
         mode=:nominal)
     x, u, w = trajectories(data, 
         mode=mode)
@@ -16,11 +16,11 @@ function gradients!(obj::Objective, data::ProblemData;
     gxx = data.objective.hessian_state_state
     guu = data.objective.hessian_action_action
     gux = data.objective.hessian_action_state
-    cost_gradient!(gx, gu, obj, x, u, w)
-    cost_hessian!(gxx, guu, gux, obj, x, u, w) 
+    cost_gradient!(gx, gu, objective, x, u, w)
+    cost_hessian!(gxx, guu, gux, objective, x, u, w) 
 end
 
-function gradients!(obj::AugmentedLagrangianCosts, data::ProblemData; 
+function gradients!(objective::AugmentedLagrangianCosts, data::ProblemData; 
     mode=:nominal)
     # objective 
     gx = data.objective.gradient_state
@@ -30,29 +30,29 @@ function gradients!(obj::AugmentedLagrangianCosts, data::ProblemData;
     gux = data.objective.hessian_action_state
 
     # constraints
-    cons = obj.constraint_data.constraints
-    c = obj.constraint_data.violations
-    cx = obj.constraint_data.jacobian_state
-    cu = obj.constraint_data.jacobian_action
-    ρ = obj.constraint_penalty
-    λ = obj.constraint_dual
-    a = obj.active_set
-    Iρ = obj.constraint_penalty_matrix
-    c_tmp = obj.constraint_tmp 
-    cx_tmp = obj.constraint_jacobian_state_tmp 
-    cu_tmp = obj.constraint_jacobian_action_tmp
+    constraints = objective.constraint_data.constraints
+    c = objective.constraint_data.violations
+    cx = objective.constraint_data.jacobian_state
+    cu = objective.constraint_data.jacobian_action
+    ρ = objective.constraint_penalty
+    λ = objective.constraint_dual
+    a = objective.active_set
+    Iρ = objective.constraint_penalty_matrix
+    c_tmp = objective.constraint_tmp 
+    cx_tmp = objective.constraint_jacobian_state_tmp 
+    cu_tmp = objective.constraint_jacobian_action_tmp
 
     # horizon
-    H = length(obj)
+    H = length(objective)
 
     # derivatives
-    gradients!(obj.costs, data, 
+    gradients!(objective.costs, data, 
         mode=mode)
-    gradients!(obj.constraint_data, data, 
+    gradients!(objective.constraint_data, data, 
         mode=mode)
 
     for t = 1:H
-        num_constraint = cons[t].num_constraint
+        num_constraint = constraints[t].num_constraint
         for i = 1:num_constraint 
             Iρ[t][i, i] = ρ[t][i] * a[t][i]
         end

@@ -21,8 +21,8 @@ function particle(x, u, w)
 end
 
 # ## model
-dyn = Dynamics(particle, num_state, num_action)
-model = [dyn for t = 1:T-1] 
+dynamics = Dynamics(particle, num_state, num_action)
+model = [dynamics for t = 1:T-1] 
 
 # ## initialization
 x1 = [0.0; 0.0] 
@@ -35,17 +35,17 @@ ot = (x, u, w) -> 0.1 * dot(x, x) + 0.1 * dot(u, u)
 oT = (x, u, w) -> 0.1 * dot(x, x)
 ct = Cost(ot, num_state, num_action)
 cT = Cost(oT, num_state, 0)
-obj = [[ct for t = 1:T-1]..., cT]
+objective = [[ct for t = 1:T-1]..., cT]
 
 # ## constraints
 goal(x, u, w) = x - xT
 
 cont = Constraint()
 conT = Constraint(goal, num_state, 0)
-cons = [[cont for t = 1:T-1]..., conT] 
+constraints = [[cont for t = 1:T-1]..., conT] 
 
 # ## problem
-prob = Solver(model, obj, cons)
+prob = Solver(model, objective, constraints)
 initialize_controls!(prob, ū)
 initialize_states!(prob, x̄)
 

@@ -36,25 +36,25 @@ function augmented_lagrangian(model::Model{T}, costs::Objective{T}, constraints:
         constraint_jacobian_action_tmp)
 end
 
-function cost(obj::AugmentedLagrangianCosts, states, actions, parameters)
+function cost(objective::AugmentedLagrangianCosts, states, actions, parameters)
     # costs
-    J = cost(obj.costs, states, actions, parameters)
+    J = cost(objective.costs, states, actions, parameters)
 
     # constraints
-    c = obj.constraint_data.violations
-    ρ = obj.constraint_penalty
-    λ = obj.constraint_dual
-    a = obj.active_set
+    c = objective.constraint_data.violations
+    ρ = objective.constraint_penalty
+    λ = objective.constraint_dual
+    a = objective.active_set
 
     # horizon
     H = length(c)
 
-    constraint!(obj.constraint_data, states, actions, parameters)
-    active_set!(a, obj.constraint_data, λ)
+    constraint!(objective.constraint_data, states, actions, parameters)
+    active_set!(a, objective.constraint_data, λ)
 
     for t = 1:H
         J += λ[t]' * c[t]
-        num_constraint = obj.constraint_data.constraints[t].num_constraint 
+        num_constraint = objective.constraint_data.constraints[t].num_constraint 
         for i = 1:num_constraint 
             if a[t][i] == 1
                 J += 0.5 * ρ[t][i] * c[t][i]^2.0
@@ -84,24 +84,24 @@ function active_set!(a, data::ConstraintsData, λ)
     end
 end
 
-function augmented_lagrangian_update!(obj::AugmentedLagrangianCosts;
+function augmented_lagrangian_update!(objective::AugmentedLagrangianCosts;
         scaling_penalty=10.0, 
         max_penalty=1.0e12)
 
     # constraints
-    c = obj.constraint_data.violations
-    cons = obj.constraint_data.constraints
-    ρ = obj.constraint_penalty
-    λ = obj.constraint_dual
+    c = objective.constraint_data.violations
+    constraints = objective.constraint_data.constraints
+    ρ = objective.constraint_penalty
+    λ = objective.constraint_dual
 
     # horizon
     H = length(c)
 
     for t = 1:H
-        num_constraint = cons[t].num_constraint 
+        num_constraint = constraints[t].num_constraint 
         for i = 1:num_constraint 
             λ[t][i] += ρ[t][i] * c[t][i]
-            if i in cons[t].indices_inequality
+            if i in constraints[t].indices_inequality
                 λ[t][i] = max(0.0, λ[t][i])
             end
             ρ[t][i] = min(scaling_penalty * ρ[t][i], max_penalty)
@@ -109,4 +109,4 @@ function augmented_lagrangian_update!(obj::AugmentedLagrangianCosts;
     end
 end
 
-Base.length(obj::AugmentedLagrangianCosts) = length(obj.costs)
+Base.length(objective::AugmentedLagrangianCosts) = length(objective.costs)

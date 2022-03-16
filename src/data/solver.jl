@@ -61,7 +61,7 @@ end
 # TODO: fix iter
 function cache!(data::SolverData)
     iter = 1 #data.cache[:iter] 
-    # (iter > length(data[:obj])) && (@warn "solver data cache exceeded")
+    # (iter > length(data[:objective])) && (@warn "solver data cache exceeded")
     data.cache[:objective][iter] = data.objective[1]
     data.cache[:gradient][iter] = data.gradient
     data.cache[:max_violation][iter] = data.max_violation

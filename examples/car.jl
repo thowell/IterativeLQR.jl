@@ -26,8 +26,8 @@ function midpoint_explicit(x, u, w)
 end
 
 # ## model
-dyn = Dynamics(midpoint_explicit, num_state, num_action, num_parameter)
-model = [dyn for t = 1:T-1] 
+dynamics = Dynamics(midpoint_explicit, num_state, num_action, num_parameter)
+model = [dynamics for t = 1:T-1] 
 
 # ## initialization
 x1 = [0.0; 0.0; 0.0] 
@@ -43,7 +43,7 @@ ot = (x, u, w) -> 1.0 * dot(x - xT, x - xT) + 1.0e-2 * dot(u, u)
 oT = (x, u, w) -> 1000.0 * dot(x - xT, x - xT)
 ct = Cost(ot, num_state, num_action, num_parameter)
 cT = Cost(oT, num_state, 0, num_parameter)
-obj = [[ct for t = 1:T-1]..., cT]
+objective = [[ct for t = 1:T-1]..., cT]
 
 # ## constraints
 ul = -5.0 * ones(num_action) 
@@ -71,10 +71,10 @@ end
 
 cont = Constraint(stage_con, num_state, num_action, indices_inequality=collect(1:5))
 conT = Constraint(terminal_con, num_state, num_action, indices_inequality=collect(3 .+ (1:1)))
-cons = [[cont for t = 1:T-1]..., conT] 
+constraints = [[cont for t = 1:T-1]..., conT] 
 
 # ## problem
-prob = Solver(model, obj, cons)
+prob = Solver(model, objective, constraints)
 initialize_controls!(prob, ū) 
 initialize_states!(prob, x̄)
 

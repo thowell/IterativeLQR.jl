@@ -29,13 +29,13 @@ rollout!(prob.policy, prob.problem, step_size=prob.solver_data.step_size[1])
 @benchmark rollout!($prob.policy, $prob.problem, step_size=$prob.solver_data.step_size[1])
 @code_warntype rollout!(prob.policy, prob.problem, step_size=prob.solver_data.step_size[1])
 
-augmented_lagrangian_update!(prob.problem.obj)
-@benchmark augmented_lagrangian_update!($prob.problem.obj)
-@code_warntype augmented_lagrangian_update!(prob.problem.obj)
+augmented_lagrangian_update!(prob.problem.objective)
+@benchmark augmented_lagrangian_update!($prob.problem.objective)
+@code_warntype augmented_lagrangian_update!(prob.problem.objective)
 
-constraint_violation(prob.problem.obj.constraint_data)
-@benchmark constraint_violation($prob.problem.obj.constraint_data)
-@code_warntype constraint_violation(prob.problem.obj.constraint_data)
+constraint_violation(prob.problem.objective.constraint_data)
+@benchmark constraint_violation($prob.problem.objective.constraint_data)
+@code_warntype constraint_violation(prob.problem.objective.constraint_data)
 
 initialize_controls!(prob, ū)
 @benchmark initialize_controls!($prob, $ū)
@@ -66,7 +66,7 @@ using BenchmarkTools
 @benchmark $A .= $(Diagonal(b .* a))
 
 t = 1
-a = prob.problem.obj.constraint_penalty[t]
-b = prob.problem.obj.a[t]
-c = prob.problem.obj.constraint_penalty_matrix[t]
+a = prob.problem.objective.constraint_penalty[t]
+b = prob.problem.objective.a[t]
+c = prob.problem.objective.constraint_penalty_matrix[t]
 @benchmark $c .= $(Diagonal(a .* b))
