@@ -1,12 +1,12 @@
 struct Cost{T}
     #TODO: types for methods
-    val
+    evaluate
     gradient_state 
     gradient_action
     hessian_state_state 
     hessian_action_action 
     hessian_action_state
-    val_cache::Vector{T}
+    evaluate_cache::Vector{T}
     gradient_state_cache::Vector{T}
     gradient_action_cache::Vector{T}
     hessian_state_state_cache::Matrix{T}
@@ -18,21 +18,21 @@ function Cost(f::Function, num_state::Int, num_action::Int; num_parameter::Int=0
     #TODO: option to load/save methods
     @variables x[1:num_state], u[1:num_action], w[1:num_parameter]
     
-    val = f(x, u, w)
-    gradient_state = Symbolics.gradient(val, x)
-    gradient_action = Symbolics.gradient(val, u) 
+    evaluate = f(x, u, w)
+    gradient_state = Symbolics.gradient(evaluate, x)
+    gradient_action = Symbolics.gradient(evaluate, u) 
     hessian_state_state = Symbolics.jacobian(gradient_state, x) 
     hessian_action_action = Symbolics.jacobian(gradient_action, u) 
     hessian_action_state = Symbolics.jacobian(gradient_action, x) 
 
-    val_func = eval(Symbolics.build_function([val], x, u, w)[2])
+    evaluate_func = eval(Symbolics.build_function([evaluate], x, u, w)[2])
     gradient_state_func = eval(Symbolics.build_function(gradient_state, x, u, w)[2])
     gradient_action_func = eval(Symbolics.build_function(gradient_action, x, u, w)[2])
     hessian_state_state_func = eval(Symbolics.build_function(hessian_state_state, x, u, w)[2])
     hessian_action_action_func = eval(Symbolics.build_function(hessian_action_action, x, u, w)[2])
     hessian_action_state_func = eval(Symbolics.build_function(hessian_action_state, x, u, w)[2])  
 
-    return Cost(val_func, 
+    return Cost(evaluate_func, 
         gradient_state_func, gradient_action_func, 
         hessian_state_state_func, hessian_action_action_func, hessian_action_state_func,
         zeros(1), 
@@ -45,8 +45,8 @@ Objective{T} = Vector{Cost{T}} where T
 function cost(costs::Vector{Cost{T}}, states, actions, parameters) where T
     J = 0.0
     for (t, cost) in enumerate(costs)
-        cost.val(cost.val_cache, states[t], actions[t], parameters[t])
-        J += cost.val_cache[1]
+        cost.evaluate(cost.evaluate_cache, states[t], actions[t], parameters[t])
+        J += cost.evaluate_cache[1]
     end
     return J 
 end

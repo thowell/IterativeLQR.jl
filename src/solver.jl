@@ -8,7 +8,7 @@ mutable struct Solver{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O,FX,FU,FW,OX,OU,OXX,OUU,OUX}
     options::Options{T}
 end
 
-function solver(dynamics::Vector{Dynamics{T}}, obj::Objective{T}; 
+function Solver(dynamics::Vector{Dynamics{T}}, obj::Objective{T}; 
     parameters=[[zeros(d.num_parameter) for d in dynamics]..., zeros(0)],
     options=Options{T}()) where T
 
@@ -25,16 +25,7 @@ function solver(dynamics::Vector{Dynamics{T}}, obj::Objective{T};
 	Solver(problem, policy, data, options)
 end
 
-
-function get_trajectory(solver::Solver)
-	return solver.problem.nominal_states, solver.problem.nominal_actions[1:end-1]
-end
-
-function current_trajectory(solver::Solver)
-	return solver.problem.states, solver.problem.actions[1:end-1]
-end
-
-function solver(dynamics::Vector{Dynamics{T}}, costs::Vector{Cost{T}}, constraints::Constraints{T};
+function Solver(dynamics::Vector{Dynamics{T}}, costs::Vector{Cost{T}}, constraints::Constraints{T};
     parameters=[[zeros(d.num_parameter) for d in dynamics]..., zeros(0)],
     options=Options{T}()) where T
 
@@ -52,6 +43,14 @@ function solver(dynamics::Vector{Dynamics{T}}, costs::Vector{Cost{T}}, constrain
     data = solver_data(dynamics)
 
 	Solver(problem, policy, data, options)
+end
+
+function get_trajectory(solver::Solver)
+	return solver.problem.nominal_states, solver.problem.nominal_actions[1:end-1]
+end
+
+function current_trajectory(solver::Solver)
+	return solver.problem.states, solver.problem.actions[1:end-1]
 end
 
 function initialize_controls!(solver::Solver, actions) 

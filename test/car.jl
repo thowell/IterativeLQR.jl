@@ -74,7 +74,7 @@
         max_dual_updates=10,
         initial_constraint_penalty=1.0,
         scaling_penalty=10.0)
-    s = solver(model, obj, cons, 
+    s = Solver(model, obj, cons, 
         options=options)
     initialize_controls!(s, ū) 
     initialize_states!(s, x̄)

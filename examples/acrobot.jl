@@ -114,7 +114,7 @@ conT = Constraint(goal, num_state, 0)
 cons = [[cont for t = 1:T-1]..., conT] 
 
 # ## problem
-prob = solver(model, obj, cons)
+prob = Solver(model, obj, cons)
 initialize_controls!(prob, ū)
 initialize_states!(prob, x̄)
 

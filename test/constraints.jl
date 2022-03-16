@@ -22,13 +22,13 @@
     ncT = num_state
     ct0 = zeros(nct) 
     cT0 = zeros(ncT)
-    cont.val(ct0, x[1], u[1], w[1])
-    conT.val(cT0, x[T], u[T], w[T])
+    cont.evaluate(ct0, x[1], u[1], w[1])
+    conT.evaluate(cT0, x[T], u[T], w[T])
     @test norm(ct0 - [-ones(num_state) - x[1]; x[1] - ones(num_state)]) < 1.0e-8
     @test norm(cT0 - x[T]) < 1.0e-8
 
     cc = [[zeros(nct) for t = 1:T-1]..., zeros(ncT)]
-    IterativeLQR.constraints!(cc, cons, x, u, w)
+    IterativeLQR.constraint!(cc, cons, x, u, w)
 
     @test norm(vcat(cc...) - vcat([ct(x[t], u[t], w[t]) for t = 1:T-1]..., cT(x[T], u[T], w[T]))) < 1.0e-8
     

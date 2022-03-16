@@ -28,8 +28,8 @@
     U = [u1 for t = 1:T]
     W = [w1 for t = 1:T]
 
-    dyn.val(dyn.val_cache, x1, u1, w1) 
-    @test norm(dyn.val_cache - euler_explicit(x1, u1, w1)) < 1.0e-8
+    dyn.evaluate(dyn.evaluate_cache, x1, u1, w1) 
+    @test norm(dyn.evaluate_cache - euler_explicit(x1, u1, w1)) < 1.0e-8
     dyn.jacobian_state(dyn.jacobian_state_cache, x1, u1, w1) 
     dyn.jacobian_action(dyn.jacobian_action_cache, x1, u1, w1) 
 

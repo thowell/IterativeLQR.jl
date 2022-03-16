@@ -16,8 +16,8 @@ function constraint_data(model::Model, cons::Constraints)
     ConstraintsData(cons, c, cx, cu)
 end
 
-function constraints!(constraint_data::ConstraintsData, x, u, w)
-    constraints!(constraint_data.violations, constraint_data.constraints, x, u, w)
+function constraint!(constraint_data::ConstraintsData, x, u, w)
+    constraint!(constraint_data.violations, constraint_data.constraints, x, u, w)
 end
 
 function constraint_violation(constraint_data::ConstraintsData; 
@@ -40,7 +40,7 @@ end
 
 function constraint_violation(constraint_data::ConstraintsData, x, u, w; 
     norm_type=Inf)
-    constraints!(constraint_data, x, u, w)
+    constraint!(constraint_data, x, u, w)
     constraint_violation(constraint_data, 
         norm_type=norm_type)
 end

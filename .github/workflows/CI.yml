@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         version:
-          - '1.7'
+          - '1.6'
         os:
           - ubuntu-latest
 #           - macOS-latest

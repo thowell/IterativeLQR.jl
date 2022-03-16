@@ -37,7 +37,7 @@ function backward_pass!(policy::PolicyData, problem::ProblemData;
 
     # terminal value function
     P[H] .= gxx[H]
-    p[H] .=  gx[H]
+    p[H] .= gx[H]
 
     for t = H-1:-1:1
         # Qx[t] .= gx[t] + fx[t]' * p[t+1]

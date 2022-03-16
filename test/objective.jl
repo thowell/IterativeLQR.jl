@@ -19,17 +19,17 @@
     U = [t < T ? u1 : zeros(0) for t = 1:T]
     W = [w1 for t = 1:T]
 
-    ct.val(ct.val_cache, x1, u1, w1)
+    ct.evaluate(ct.evaluate_cache, x1, u1, w1)
     ct.gradient_state(ct.gradient_state_cache, x1, u1, w1)
     ct.gradient_action(ct.gradient_action_cache, x1, u1, w1)
 
-    @test ct.val_cache[1] ≈ ot(x1, u1, w1)
+    @test ct.evaluate_cache[1] ≈ ot(x1, u1, w1)
     @test norm(ct.gradient_state_cache - 2.0 * x1) < 1.0e-8
     @test norm(ct.gradient_action_cache - 0.2 * u1) < 1.0e-8
 
-    cT.val(cT.val_cache, x1, u1, w1)
+    cT.evaluate(cT.evaluate_cache, x1, u1, w1)
     cT.gradient_state(cT.gradient_state_cache, x1, zeros(0), zeros(0))
-    @test cT.val_cache[1] ≈ oT(x1, u1, w1)
+    @test cT.evaluate_cache[1] ≈ oT(x1, u1, w1)
     @test norm(cT.gradient_state_cache - 20.0 * x1) < 1.0e-8
 
     @test IterativeLQR.cost(obj, X, U, X) - sum([ot(X[t], U[t], W[t]) for t = 1:T-1]) - oT(X[T], U[T], W[T]) ≈ 0.0

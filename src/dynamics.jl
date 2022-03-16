@@ -1,12 +1,12 @@
 struct Dynamics{T}
-    val 
+    evaluate 
     jacobian_state 
     jacobian_action
     num_next_state::Int 
     num_state::Int 
     num_action::Int
     num_parameter::Int
-    val_cache::Vector{T} 
+    evaluate_cache::Vector{T} 
     jacobian_state_cache::Matrix{T}
     jacobian_action_cache::Matrix{T}
 end
@@ -19,19 +19,19 @@ function Dynamics(f::Function, num_state::Int, num_action::Int; num_parameter::I
     y = f(x, u, w) 
     jacobian_state = Symbolics.jacobian(y, x);
     jacobian_action = Symbolics.jacobian(y, u);
-    val_func = eval(Symbolics.build_function(y, x, u, w)[2]);
+    evaluate_func = eval(Symbolics.build_function(y, x, u, w)[2]);
     jacobian_state_func = eval(Symbolics.build_function(jacobian_state, x, u, w)[2]);
     jacobian_action_func = eval(Symbolics.build_function(jacobian_action, x, u, w)[2]);
     num_next_state = length(y)
 
-    return Dynamics(val_func, jacobian_state_func, jacobian_action_func, 
+    return Dynamics(evaluate_func, jacobian_state_func, jacobian_action_func, 
                     num_next_state, num_state, num_action, num_parameter, 
                     zeros(num_next_state), zeros(num_next_state, num_state), zeros(num_next_state, num_action))
 end
 
 function dynamics!(d::Dynamics, state, action, parameter) 
-    d.val(d.val_cache, state, action, parameter)
-    return d.val_cache
+    d.evaluate(d.evaluate_cache, state, action, parameter)
+    return d.evaluate_cache
 end
 
 function jacobian!(jacobian_states, jacobian_actions, dynamics::Vector{Dynamics{T}}, states, actions, parameters) where T

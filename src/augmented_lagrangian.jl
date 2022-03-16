@@ -49,7 +49,7 @@ function cost(obj::AugmentedLagrangianCosts, states, actions, parameters)
     # horizon
     H = length(c)
 
-    constraints!(obj.constraint_data, states, actions, parameters)
+    constraint!(obj.constraint_data, states, actions, parameters)
     active_set!(a, obj.constraint_data, λ)
 
     for t = 1:H

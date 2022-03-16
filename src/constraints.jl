@@ -1,12 +1,12 @@
 struct Constraint{T}
-    val 
+    evaluate 
     jacobian_state 
     jacobian_action
     num_constraint::Int
     num_state::Int 
     num_action::Int 
     num_parameter::Int
-    val_cache::Vector{T} 
+    evaluate_cache::Vector{T} 
     jacobian_state_cache::Matrix{T}
     jacobian_action_cache::Matrix{T}
     indices_inequality::Vector{Int}
@@ -21,18 +21,18 @@ function Constraint(f::Function, num_state::Int, num_action::Int;
     #TODO: option to load/save methods
     @variables x[1:num_state], u[1:num_action], w[1:num_parameter]
     
-    val = f(x, u, w)
-    jacobian_state = Symbolics.jacobian(val, x)
-    jacobian_action = Symbolics.jacobian(val, u)
+    evaluate = f(x, u, w)
+    jacobian_state = Symbolics.jacobian(evaluate, x)
+    jacobian_action = Symbolics.jacobian(evaluate, u)
 
-    val_func = eval(Symbolics.build_function(val, x, u, w)[2])
+    evaluate_func = eval(Symbolics.build_function(evaluate, x, u, w)[2])
     jacobian_state_func = eval(Symbolics.build_function(jacobian_state, x, u, w)[2])
     jacobian_action_func = eval(Symbolics.build_function(jacobian_action, x, u, w)[2])
 
-    num_constraint = length(val) 
+    num_constraint = length(evaluate) 
     
     return Constraint(
-        val_func, 
+        evaluate_func, 
         jacobian_state_func, jacobian_action_func,
         num_constraint, num_state, num_action, num_parameter,  
         zeros(num_constraint), zeros(num_constraint, num_state), zeros(num_constraint, num_action), 
@@ -48,12 +48,12 @@ function Constraint()
         collect(1:0))
 end
 
-function constraints!(violations, constraints::Constraints{T}, states, actions, parameters) where T
+function constraint!(violations, constraints::Constraints{T}, states, actions, parameters) where T
     for (t, con) in enumerate(constraints)
         con.num_constraint == 0 && continue
-        con.val(con.val_cache, states[t], actions[t], parameters[t])
-        @views violations[t] .= con.val_cache
-        fill!(con.val_cache, 0.0) # TODO: confirm this is necessary 
+        con.evaluate(con.evaluate_cache, states[t], actions[t], parameters[t])
+        @views violations[t] .= con.evaluate_cache
+        fill!(con.evaluate_cache, 0.0) # TODO: confirm this is necessary 
     end
 end
 

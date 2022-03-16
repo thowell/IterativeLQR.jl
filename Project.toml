@@ -1,7 +1,7 @@
 name = "IterativeLQR"
 uuid = "605048dd-e178-462b-beb9-98a09398ef27"
 authors = ["thowell <thowell@stanford.edu>"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
@@ -13,4 +13,4 @@ Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 JLD2 = "0.4"
 Scratch = "1.0"
 Symbolics = "0.1.29 - 0.1.29"
-julia = "1.6, 1.7"
+julia = "1.6"

@@ -36,7 +36,7 @@ export Dynamics
 # solver 
 export rollout, 
     dynamics!,
-    solver, Options,
+    Solver, Options,
     initialize_controls!, initialize_states!, 
     solve!,
     get_trajectory
