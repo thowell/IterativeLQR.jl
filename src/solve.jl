@@ -4,18 +4,18 @@ function ilqr_solve!(solver::Solver)
 	# 	color=:red, bold=true)
 
 	# data
-	policy = solver.policy   
+	policy = solver.policy
     problem = solver.problem
     reset!(problem.model)
-    reset!(problem.objective) 
+    reset!(problem.objective)
 	data = solver.data
     solver.options.reset_cache && reset!(data)
 
-	cost!(data, problem, 
+	cost!(data, problem,
         mode=:nominal)
-    gradients!(problem, 
+    gradients!(problem,
         mode=:nominal)
-    backward_pass!(policy, problem, 
+    backward_pass!(policy, problem,
         mode=:nominal)
 
     obj_prev = data.objective[1]
@@ -25,9 +25,9 @@ function ilqr_solve!(solver::Solver)
             line_search=solver.options.line_search,
             verbose=solver.options.verbose)
         if solver.options.line_search != :none
-            gradients!(problem, 
+            gradients!(problem,
                 mode=:nominal)
-            backward_pass!(policy, problem, 
+            backward_pass!(policy, problem,
                 mode=:nominal)
             lagrangian_gradient!(data, policy, problem)
         end
@@ -54,8 +54,8 @@ function ilqr_solve!(solver::Solver)
 end
 
 function ilqr_solve!(solver::Solver, states, actions; kwargs...)
-    initialize_controls!(solver, actions) 
-    initialize_states!(solver, states) 
+    initialize_controls!(solver, actions)
+    initialize_states!(solver, states)
     ilqr_solve!(solver; kwargs...)
 end
 
@@ -72,8 +72,8 @@ function lagrangian_gradient!(data::SolverData, policy::PolicyData, problem::Pro
 
     for t = 1:H-1
         Lx = @views data.gradient[data.indices_state[t]]
-        Lx .= Qx[t] 
-        Lx .-= p[t] 
+        Lx .= Qx[t]
+        Lx .-= p[t]
         Lu = @views data.gradient[data.indices_action[t]]
         Lu .= Qu[t]
         # data.gradient[data.indices_state[t]] = Qx[t] - p[t] # should always be zero by construction
@@ -85,15 +85,15 @@ end
 """
     augmented Lagrangian solve
 """
-function constrained_ilqr_solve!(solver::Solver)
+function constrained_ilqr_solve!(solver::Solver; augmented_lagrangian_callback!::Function=x->nothing)
 
 	# verbose && printstyled("Iterative LQR\n",
 	# 	color=:red, bold=true)
 
-    # reset solver cache 
-    reset!(solver.data) 
+    # reset solver cache
+    reset!(solver.data)
 
-    # reset duals 
+    # reset duals
     for (t, λ) in enumerate(solver.problem.objective.costs.constraint_dual)
         fill!(λ, 0.0)
 	end
@@ -110,24 +110,27 @@ function constrained_ilqr_solve!(solver::Solver)
 		ilqr_solve!(solver)
 
 		# update trajectories
-		cost!(solver.data, solver.problem, 
+		cost!(solver.data, solver.problem,
             mode=:nominal)
-		
+
         # constraint violation
 		solver.data.max_violation[1] <= solver.options.constraint_tolerance && break
 
         # dual ascent
 		augmented_lagrangian_update!(solver.problem.objective.costs,
-			scaling_penalty=solver.options.scaling_penalty, 
+			scaling_penalty=solver.options.scaling_penalty,
             max_penalty=solver.options.max_penalty)
+
+		# user-defined callback (continuation methods on the models etc.)
+		augmented_lagrangian_callback!(solver)
 	end
 
     return nothing
 end
 
 function constrained_ilqr_solve!(solver::Solver, states, actions; kwargs...)
-    initialize_controls!(solver, actions) 
-    initialize_states!(solver, states) 
+    initialize_controls!(solver, actions)
+    initialize_states!(solver, states)
     constrained_ilqr_solve!(solver; kwargs...)
 end
 
@@ -138,6 +141,3 @@ end
 function solve!(solver::Solver{T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O}, args...; kwargs...) where {T,N,M,NN,MM,MN,NNN,MNN,X,U,D,O<:AugmentedLagrangianCosts{T}}
     constrained_ilqr_solve!(solver, args...; kwargs...)
 end
-
-
-
