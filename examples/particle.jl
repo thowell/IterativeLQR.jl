@@ -42,6 +42,11 @@ goal(x, u, w) = x - xT
 
 cont = Constraint()
 conT = Constraint(goal, num_state, 0)
+# conT = Constraint(
+#       (c, x, u, w) -> c .= x - xT, 
+#       (cx, x, u, w) -> cx .= 1.0 * I(length(x)), 
+#       (cu, x, u, w) -> cu .= zeros(length(x), length(u)), 
+#       length(xT), num_state, num_action)
 constraints = [[cont for t = 1:T-1]..., conT] 
 
 # ## problem

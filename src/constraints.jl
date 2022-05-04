@@ -48,6 +48,18 @@ function Constraint()
         collect(1:0))
 end
 
+function Constraint(f::Function, fx::Function, fu::Function, num_constraint::Int, num_state::Int, num_action::Int; 
+    indices_inequality::Vector{Int}=collect(1:0), 
+    num_parameter::Int=0)
+
+    return Constraint(
+        f, 
+        fx, fu,
+        num_constraint, num_state, num_action, num_parameter,  
+        zeros(num_constraint), zeros(num_constraint, num_state), zeros(num_constraint, num_action), 
+        indices_inequality)
+end
+
 function constraint!(violations, constraints::Constraints{T}, states, actions, parameters) where T
     for (t, con) in enumerate(constraints)
         con.num_constraint == 0 && continue
