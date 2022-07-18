@@ -7,18 +7,18 @@
     num_action = 2
     num_parameter = 0 
 
-    function car(x, u, w)
+    function car_continuous(x, u)
         [u[1] * cos(x[3]); u[1] * sin(x[3]); u[2]]
     end
 
-    function midpoint_explicit(x, u, w)
+    function car_discrete(x, u)
         h = 0.1 # timestep 
-        x + h * car(x + 0.5 * h * car(x, u, w), u, w)
+        x + h * car_continuous(x + 0.5 * h * car_continuous(x, u), u)
     end
 
     # ## model
-    dynamics = Dynamics(midpoint_explicit, num_state, num_action, num_parameter=num_parameter)
-    model = [dynamics for t = 1:T-1] 
+    car = Dynamics(car_discrete, num_state, num_action)
+    dynamics = [car for t = 1:T-1] 
 
     # ## initialization
     x1 = [0.0; 0.0; 0.0] 
@@ -26,15 +26,13 @@
 
     # ## rollout
     ū = [1.0e-2 * [1.0; 0.1] for t = 1:T-1]
-    w = [zeros(num_parameter) for t = 1:T] 
-    x̄ = rollout(model, x1, ū, w)
+    x̄ = rollout(dynamics, x1, ū)
 
     # ## objective 
-    ot = (x, u, w) -> 1.0 * dot(x - xT, x - xT) + 1.0e-2 * dot(u, u)
-    oT = (x, u, w) -> 0.0 * dot(x - xT, x - xT)
-    ct = Cost(ot, num_state, num_action, num_parameter=num_parameter)
-    cT = Cost(oT, num_state, 0, num_parameter=0)
-    objective = [[ct for t = 1:T-1]..., cT]
+    objective = [
+        [Cost((x, u) -> 1.0 * dot(x - xT, x - xT) + 1.0e-2 * dot(u, u), num_state, num_action) for t = 1:T-1]...,
+        Cost((x, u) -> 1000.0 * dot(x - xT, x - xT), num_state, 0)
+    ]
 
     # ## constraints
     ul = -5.0 * ones(num_action) 
@@ -43,52 +41,46 @@
     p_obs = [0.5; 0.5] 
     r_obs = 0.1
 
-    function stage_con(x, u, w) 
-        e = x[1:2] - p_obs
-        [
-        ul - u; # control limit (lower)
-        u - uu; # control limit (upper)
-        r_obs^2.0 - dot(e, e); # obstacle 
-        ]
-    end 
+    constraints = [
+        [Constraint((x, u) -> begin
+            e = x[1:2] - p_obs
+            [
+                ul - u; ## control limit (lower)
+                u - uu; ## control limit (upper)
+                r_obs^2.0 - dot(e, e); ## obstacle 
+            ]
+        end, 
+        num_state, num_action, indices_inequality=collect(1:5)) for t = 1:T-1]..., 
+        Constraint((x, u) -> begin
+            e = x[1:2] - p_obs
+            [
+                x - xT; # goal 
+                r_obs^2.0 - dot(e, e); # obstacle
+            ]
+        end, num_state, 0, indices_inequality=collect(3 .+ (1:1)))
+    ] 
 
-    function terminal_con(x, u, w) 
-        e = x[1:2] - p_obs
-        [
-        x - xT; # goal 
-        r_obs^2.0 - dot(e, e); # obstacle
-        ]
-    end
-
-    cont = Constraint(stage_con, num_state, num_action, indices_inequality=collect(1:5))
-    conT = Constraint(terminal_con, num_state, 0, indices_inequality=collect(3 .+ (1:1)))
-    constraints = [[cont for t = 1:T-1]..., conT] 
-
-    # ## problem
-    options = Options(verbose=false,
-        line_search=:armijo,
-        min_step_size=1.0e-5,
-        objective_tolerance=1.0e-3,
-        lagrangian_gradient_tolerance=1.0e-3,
-        max_iterations=100,
-        max_dual_updates=10,
-        initial_constraint_penalty=1.0,
-        scaling_penalty=10.0)
-    s = Solver(model, objective, constraints, 
-        options=options)
-    initialize_controls!(s, ū) 
-    initialize_states!(s, x̄)
+    # ## solver
+    solver = Solver(dynamics, objective, constraints)
+    initialize_controls!(solver, ū) 
+    initialize_states!(solver, x̄)
 
     # ## solve
-    solve!(s)
+    solve!(solver)
 
     # ## solution
-    x_sol, u_sol = get_trajectory(s)
+    x_sol, u_sol = get_trajectory(solver)
 
-    @test all([all(stage_con(x_sol[t], u_sol[t], w[t]) .<= options.constraint_tolerance) for t = 1:T-1])
-    @test all(abs.(terminal_con(x_sol[T], zeros(0), zeros(0))[1:3]) .<= options.constraint_tolerance)
+    @test all([begin constraints[t].evaluate(constraints[t].evaluate_cache, x_sol[t], u_sol[t], nothing); all(constraints[t].evaluate_cache .<= solver.options.constraint_tolerance) end for t = 1:T-1])
+
+    t = T
+    constraints[t].evaluate(constraints[t].evaluate_cache, x_sol[t], zeros(0), nothing)
+    @test constraints[t].evaluate_cache[4] <= solver.options.constraint_tolerance
+    @test all(abs.(constraints[t].evaluate_cach[1:3]) .<= solver.options.constraint_tolerance)
 
     # ## allocations
     # info = @benchmark solve!($prob, a, b) setup=(a=deepcopy(x̄), b=deepcopy(ū))
     # @test info.allocs == 0
 end
+
+

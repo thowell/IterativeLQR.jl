@@ -16,7 +16,7 @@ Model{T} = Vector{Dynamics{T}} where T
 function Dynamics(f::Function, num_state::Int, num_action::Int; num_parameter::Int=0)
     #TODO: option to load/save methods
     @variables x[1:num_state], u[1:num_action], w[1:num_parameter] 
-    y = f(x, u, w) 
+    y = num_parameter > 0 ? f(x, u, w) : f(x, u)
     jacobian_state = Symbolics.jacobian(y, x);
     jacobian_action = Symbolics.jacobian(y, u);
     evaluate_func = eval(Symbolics.build_function(y, x, u, w)[2]);

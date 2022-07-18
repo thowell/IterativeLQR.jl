@@ -21,7 +21,7 @@ function Constraint(f::Function, num_state::Int, num_action::Int;
     #TODO: option to load/save methods
     @variables x[1:num_state], u[1:num_action], w[1:num_parameter]
     
-    evaluate = f(x, u, w)
+    evaluate = num_parameter > 0 ? f(x, u, w) : f(x, u)
     jacobian_state = Symbolics.jacobian(evaluate, x)
     jacobian_action = Symbolics.jacobian(evaluate, u)
 

@@ -3,8 +3,8 @@
     num_state = 2
     num_action = 1 
     num_parameter = 0
-    ot = (x, u, w) -> dot(x, x) + 0.1 * dot(u, u)
-    oT = (x, u, w) -> 10.0 * dot(x, x)
+    ot = (x, u) -> dot(x, x) + 0.1 * dot(u, u)
+    oT = (x, u) -> 10.0 * dot(x, x)
     ct = Cost(ot, num_state, num_action, num_parameter=num_parameter)
     cT = Cost(oT, num_state, 0, num_parameter=num_parameter)
     objective = [[ct for t = 1:T-1]..., cT]
@@ -23,16 +23,16 @@
     ct.gradient_state(ct.gradient_state_cache, x1, u1, w1)
     ct.gradient_action(ct.gradient_action_cache, x1, u1, w1)
 
-    @test ct.evaluate_cache[1] ≈ ot(x1, u1, w1)
+    @test ct.evaluate_cache[1] ≈ ot(x1, u1)
     @test norm(ct.gradient_state_cache - 2.0 * x1) < 1.0e-8
     @test norm(ct.gradient_action_cache - 0.2 * u1) < 1.0e-8
 
     cT.evaluate(cT.evaluate_cache, x1, u1, w1)
     cT.gradient_state(cT.gradient_state_cache, x1, zeros(0), zeros(0))
-    @test cT.evaluate_cache[1] ≈ oT(x1, u1, w1)
+    @test cT.evaluate_cache[1] ≈ oT(x1, u1)
     @test norm(cT.gradient_state_cache - 20.0 * x1) < 1.0e-8
 
-    @test IterativeLQR.cost(objective, X, U, X) - sum([ot(X[t], U[t], W[t]) for t = 1:T-1]) - oT(X[T], U[T], W[T]) ≈ 0.0
+    @test IterativeLQR.cost(objective, X, U, X) - sum([ot(X[t], U[t]) for t = 1:T-1]) - oT(X[T], U[T]) ≈ 0.0
     gradient_state = [zeros(num_state) for t = 1:T]
     gradient_action = [zeros(num_action) for t = 1:T-1]
     IterativeLQR.cost_gradient!(gradient_state, gradient_action, objective, X, U, W) 

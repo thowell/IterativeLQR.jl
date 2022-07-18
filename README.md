@@ -41,15 +41,15 @@ T = 11
 num_state = 2
 num_action = 1 
 
-function particle(x, u, w)
+function particle_discrete(x, u)
    A = [1.0 1.0; 0.0 1.0]
    B = [0.0; 1.0] 
    return A * x + B * u[1]
 end
 
 # model
-dynamics = Dynamics(particle, num_state, num_action)
-model = [dynamics for t = 1:T-1] 
+particle = Dynamics(particle_discrete, num_state, num_action)
+dynamics = [particle for t = 1:T-1] 
 
 # initialization
 x1 = [0.0; 0.0] 
@@ -57,30 +57,28 @@ xT = [1.0; 0.0]
 ū = [1.0e-1 * randn(num_action) for t = 1:T-1] 
 x̄ = rollout(model, x1, ū)
 
-# objective 
-ot = (x, u, w) -> 0.1 * dot(x, x) + 0.1 * dot(u, u)
-oT = (x, u, w) -> 0.1 * dot(x, x)
-ct = Cost(ot, num_state, num_action)
-cT = Cost(oT, num_state, 0)
-objective = [[ct for t = 1:T-1]..., cT]
+# objective  
+objective = [
+   [Cost((x, u) -> 0.1 * dot(x, x) + 0.1 * dot(u, u), num_state, num_action) for t = 1:T-1]..., 
+   Cost((x, u) -> 0.1 * dot(x, x), num_state, 0)
+]
 
 # constraints
-goal(x, u, w) = x - xT
+constraints = [
+   [Constraint() for t = 1:T-1]..., 
+   Constraint((x, u) -> x - xT, num_state, 0)
+] 
 
-cont = Constraint()
-conT = Constraint(goal, num_state, 0)
-constraints = [[cont for t = 1:T-1]..., conT] 
-
-# problem
-prob = Solver(model, objective, constraints)
-initialize_controls!(prob, ū)
-initialize_states!(prob, x̄)
+# solver
+solver = Solver(model, objective, constraints)
+initialize_controls!(solver, ū)
+initialize_states!(solver, x̄)
 
 # solve
-solve!(prob)
+solve!(solver)
 
 # solution
-x_sol, u_sol = get_trajectory(prob)
+x_sol, u_sol = get_trajectory(solver)
 ```
 ## Examples 
 

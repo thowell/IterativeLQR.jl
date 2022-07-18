@@ -1,13 +1,12 @@
 @testset "Solve: acrobot" begin 
     # ## horizon 
-    T = 101 
+    T = 51 
 
     # ## acrobot 
     num_state = 4 
     num_action = 1 
-    num_parameter = 0 
 
-    function acrobot(x, u, w)
+    function acrobot_continuous(x, u)
         mass1 = 1.0  
         inertia1 = 0.33  
         length1 = 1.0 
@@ -22,7 +21,7 @@
         friction1 = 0.1 
         friction2 = 0.1
 
-        function M(x, w)
+        function M(x)
             a = (inertia1 + inertia2 + mass2 * length1 * length1
                 + 2.0 * mass2 * length1 * lengthcom2 * cos(x[2]))
 
@@ -30,11 +29,11 @@
 
             c = inertia2
 
-            return [a b; b c]
+        return [a b; b c]
         end
 
-        function Minv(x, w) 
-            m = M(x, w) 
+        function Minv(x) 
+            m = M(x) 
             a = m[1, 1] 
             b = m[1, 2] 
             c = m[2, 1] 
@@ -42,7 +41,7 @@
             1.0 / (a * d - b * c) * [d -b;-c a]
         end
 
-        function τ(x, w)
+        function τ(x)
             a = (-1.0 * mass1 * gravity * lengthcom1 * sin(x[1])
                 - mass2 * gravity * (length1 * sin(x[1])
                 + lengthcom2 * sin(x[1] + x[2])))
@@ -52,7 +51,7 @@
             return [a; b]
         end
 
-        function C(x, w)
+        function C(x)
             a = -2.0 * mass2 * length1 * lengthcom2 * sin(x[2]) * x[4]
             b = -1.0 * mass2 * length1 * lengthcom2 * sin(x[2]) * x[4]
             c = mass2 * length1 * lengthcom2 * sin(x[2]) * x[3]
@@ -61,72 +60,58 @@
             return [a b; c d]
         end
 
-        function B(x, w)
+        function B(x)
             [0.0; 1.0]
         end
 
         q = view(x, 1:2)
         v = view(x, 3:4)
 
-        qdd = Minv(q, w) * (-1.0 * C(x, w) * v
-                + τ(q, w) + B(q, w) * u[1] - [friction1; friction2] .* v)
+        qdd = Minv(q) * (-1.0 * C(x) * v
+                + τ(q) + B(q) * u[1] - [friction1; friction2] .* v)
 
         return [x[3]; x[4]; qdd[1]; qdd[2]]
     end
 
-    function midpoint_explicit(x, u, w)
+    function acrobot_discrete(x, u)
         h = 0.1 # timestep 
-        x + h * acrobot(x + 0.5 * h * acrobot(x, u, w), u, w)
+        x + h * acrobot_continuous(x + 0.5 * h * acrobot_continuous(x, u), u)
     end
 
     # ## model
-    dynamics = Dynamics(midpoint_explicit, num_state, num_action, num_parameter=num_parameter)
-    model = [dynamics for t = 1:T-1] 
+    acrobot = Dynamics(acrobot_discrete, num_state, num_action)
+    dynamics = [acrobot for t = 1:T-1] ## best to instantiate acrobot once to reduce codegen overhead
 
     # ## initialization
     x1 = [0.0; 0.0; 0.0; 0.0] 
-    xT = [0.0; π; 0.0; 0.0]
-    ū = [1.0e-3 * randn(num_action) for t = 1:T-1] 
-    w = [zeros(num_parameter) for t = 1:T]
-    x̄ = rollout(model, x1, ū, w)
+    xT = [π; 0.0; 0.0; 0.0]
+    ū = [1.0 * randn(num_action) for t = 1:T-1] 
+    x̄ = rollout(dynamics, x1, ū)
 
     # ## objective 
-    ot = (x, u, w) -> 0.1 * dot(x[3:4], x[3:4]) + 0.1 * dot(u, u)
-    oT = (x, u, w) -> 0.1 * dot(x[3:4], x[3:4])
-    ct = Cost(ot, num_state, num_action, num_parameter=num_parameter)
-    cT = Cost(oT, num_state, 0, num_parameter=num_parameter)
-    objective = [[ct for t = 1:T-1]..., cT]
+    objective = [
+        [Cost((x, u) -> 0.1 * dot(x[3:4], x[3:4]) + 0.1 * dot(u, u), num_state, num_action) for t = 1:T-1]...,
+        Cost((x, u) -> 0.1 * dot(x[3:4], x[3:4]), num_state, 0),
+    ] 
 
     # ## constraints
-    goal(x, u, w) = x - xT
+    constraints = [
+        [Constraint() for t = 1:T-1]..., 
+        Constraint((x, u) -> x - xT, num_state, 0)
+    ] 
 
-    cont = Constraint()
-    conT = Constraint(goal, num_state, 0)
-    constraints = [[cont for t = 1:T-1]..., conT] 
-
-    # ## problem
-    options = Options(verbose=false,
-        line_search=:armijo,
-        min_step_size=1.0e-5,
-        objective_tolerance=1.0e-3,
-        lagrangian_gradient_tolerance=1.0e-3,
-        max_iterations=100,
-        max_dual_updates=10,
-        initial_constraint_penalty=1.0,
-        scaling_penalty=10.0)
-
-    s = Solver(model, objective, constraints, options=options)
-
-    initialize_controls!(s, ū) 
-    initialize_states!(s, x̄)
+    # ## solver
+    solver = Solver(dynamics, objective, constraints)
+    initialize_controls!(solver, ū)
+    initialize_states!(solver, x̄)
 
     # ## solve
-    solve!(s)
+    solve!(solver)
 
     # ## solution
-    x_sol, u_sol = get_trajectory(s)
+    x_sol, u_sol = get_trajectory(solver)
 
-    @test norm(x_sol[T] - xT, Inf) < options.constraint_tolerance
+    @test norm(x_sol[T] - xT, Inf) < solver.options.constraint_tolerance
 
     # ## allocations
     # info = @benchmark solve!($prob, a, b) setup=(a=deepcopy(x̄), b=deepcopy(ū))

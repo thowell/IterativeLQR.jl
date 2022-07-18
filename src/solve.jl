@@ -1,7 +1,7 @@
-function ilqr_solve!(solver::Solver)
+function ilqr_solve!(solver::Solver; 
+    iteration=true)
 
-    # printstyled("Iterative LQR\n",
-	# 	color=:red, bold=true)
+    (solver.options.verbose && iteration==1) && solver_info()
 
 	# data
 	policy = solver.policy
@@ -87,8 +87,7 @@ end
 """
 function constrained_ilqr_solve!(solver::Solver; augmented_lagrangian_callback!::Function=x->nothing)
 
-	# verbose && printstyled("Iterative LQR\n",
-	# 	color=:red, bold=true)
+	solver.options.verbose && solver_info()
 
     # reset solver cache
     reset!(solver.data)
@@ -107,7 +106,8 @@ function constrained_ilqr_solve!(solver::Solver; augmented_lagrangian_callback!:
 		solver.options.verbose && println("  al iter: $i")
 
 		# primal minimization
-		ilqr_solve!(solver)
+		ilqr_solve!(solver, 
+            iteration=i)
 
 		# update trajectories
 		cost!(solver.data, solver.problem,

@@ -4,6 +4,8 @@ using LinearAlgebra
 using Symbolics 
 using Scratch 
 using JLD2
+using Printf
+using Crayons
 
 include("costs.jl")
 include("dynamics.jl")
@@ -22,6 +24,7 @@ include("augmented_lagrangian.jl")
 include("gradients.jl")
 include("backward_pass.jl")
 include("forward_pass.jl")
+include("print.jl")
 include("solve.jl")
 
 # objective 

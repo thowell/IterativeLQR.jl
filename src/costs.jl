@@ -18,7 +18,7 @@ function Cost(f::Function, num_state::Int, num_action::Int; num_parameter::Int=0
     #TODO: option to load/save methods
     @variables x[1:num_state], u[1:num_action], w[1:num_parameter]
     
-    evaluate = f(x, u, w)
+    evaluate = num_parameter > 0 ? f(x, u, w) : f(x, u)
     gradient_state = Symbolics.gradient(evaluate, x)
     gradient_action = Symbolics.gradient(evaluate, u) 
     hessian_state_state = Symbolics.jacobian(gradient_state, x) 

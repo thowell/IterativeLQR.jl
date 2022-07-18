@@ -1,15 +1,18 @@
 name = "IterativeLQR"
 uuid = "605048dd-e178-462b-beb9-98a09398ef27"
 authors = ["thowell <thowell@stanford.edu>"]
-version = "0.2.1"
+version = "0.2.2"
 
 [deps]
+Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Scratch = "6c6a2e73-6563-6170-7368-637461726353"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 
 [compat]
+Crayons = "4.1.1"
 JLD2 = "0.4"
 Scratch = "1.0"
 Symbolics = "0.1.29 - 0.1.29"
