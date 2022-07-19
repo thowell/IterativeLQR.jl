@@ -76,7 +76,7 @@
     t = T
     constraints[t].evaluate(constraints[t].evaluate_cache, x_sol[t], zeros(0), nothing)
     @test constraints[t].evaluate_cache[4] <= solver.options.constraint_tolerance
-    @test all(abs.(constraints[t].evaluate_cach[1:3]) .<= solver.options.constraint_tolerance)
+    @test all(abs.(constraints[t].evaluate_cache[1:3]) .<= solver.options.constraint_tolerance)
 
     # ## allocations
     # info = @benchmark solve!($prob, a, b) setup=(a=deepcopy(x̄), b=deepcopy(ū))
