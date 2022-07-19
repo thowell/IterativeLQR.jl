@@ -4,13 +4,19 @@
 
 A Julia package for solving constrained trajectory optimization problems with iterative LQR (iLQR). 
 
-```
-minimize        cost_T(state_T; parameter_T) + sum(cost_t(state_t, action_t; parameter_t))
-states, actions
-subject to      state_t+1 = dynamics_t(state_t, action_t; parameter_t), t = 1,...,T-1 
-                state_1 = state_initial
-                constraint_t(state_t, action_t; parameter_t) {<,=} 0,   t = 1,...,T
-```
+$$ 
+\begin{align*}
+		\underset{x_{1:T}, \phantom{\,} u_{1:T-1}}{\text{minimize }} & \phantom{,} g_T(x_T; \theta_T) + \sum \limits_{t = 1}^{T-1} g_t(x_t, u_t; \theta_t)\\
+		\text{subject to } & \phantom{,} f_t(x_t, u_t; \theta_t) = x_{t+1}, \phantom{,} \quad t = 1,\dots,T-1,\\
+		& \phantom{,} c_t(x_t, u_t; \theta_t) \phantom{,}[\leq, =] \phantom{,} 0, \quad t = 1, \dots, T,\\
+\end{align*}
+$$
+
+with
+
+- $x_{1:T}$: state trajectory 
+- $u_{1:T-1}$: action trajectory 
+- $\theta_{1:T}$: problem-data trajectory 
 
 
 - Fast and allocation-free gradients and Jacobians are automatically generated using [Symbolics.jl](https://github.com/JuliaSymbolics/Symbolics.jl) for user-provided costs, constraints, and dynamics. 
