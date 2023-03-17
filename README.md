@@ -55,7 +55,7 @@ end
 
 # model
 particle = Dynamics(particle_discrete, num_state, num_action)
-dynamics = [particle for t = 1:T-1] 
+model = [particle for t = 1:T-1] 
 
 # initialization
 x1 = [0.0; 0.0] 
